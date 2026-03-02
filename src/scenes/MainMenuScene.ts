@@ -1,4 +1,10 @@
 import Phaser from 'phaser';
+import { pushRoute } from '../router';
+
+const ROUTE_MAP: Record<string, string> = {
+  TossPaperScene: '/toss-paper/single',
+  PaperCrewScene: '/paper-crew',
+};
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -51,10 +57,13 @@ export class MainMenuScene extends Phaser.Scene {
       text.on('pointerover', () => text.setColor('#FF8F01'));
       text.on('pointerout', () => text.setColor('#1A1A1A'));
       text.on('pointerdown', () => {
-        if (item.scene === 'TossPaperScene') {
-          this.scene.start(item.scene);
+        const route = ROUTE_MAP[item.scene];
+        if (route) {
+          pushRoute(route);
+          const data = item.scene === 'TossPaperScene' ? { mode: 'single' } : {};
+          this.scene.start(item.scene, data);
         } else {
-          console.log(`Navigate to: ${item.scene}`);
+          console.log(`Navigate to: ${item.scene} (not yet implemented)`);
         }
       });
     });

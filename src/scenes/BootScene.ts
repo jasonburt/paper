@@ -10,6 +10,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('MainMenuScene');
+    const route = (window as any).__PAPER_ROUTE__ ?? { scene: 'MainMenuScene', data: {} };
+    this.scene.start(route.scene, route.data);
   }
 }

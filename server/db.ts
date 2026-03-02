@@ -8,6 +8,8 @@ export function initDb() {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
+      icon TEXT NOT NULL DEFAULT 'plane',
+      color TEXT NOT NULL DEFAULT '#FF4F36',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -35,9 +37,30 @@ export function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS obstacles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      crew_id INTEGER REFERENCES crews(id) NOT NULL,
+      game TEXT NOT NULL,
+      user_id INTEGER REFERENCES users(id),
+      type TEXT NOT NULL,
+      x REAL NOT NULL,
+      y REAL NOT NULL,
+      color TEXT NOT NULL DEFAULT '#D0D0D0',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_scores_game ON scores(game);
     CREATE INDEX IF NOT EXISTS idx_scores_crew ON scores(crew_id);
+    CREATE INDEX IF NOT EXISTS idx_obstacles_crew ON obstacles(crew_id, game);
   `);
+
+  // Migrations — add columns to existing tables
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN icon TEXT NOT NULL DEFAULT 'plane'`);
+  } catch { /* column already exists */ }
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN color TEXT NOT NULL DEFAULT '#FF4F36'`);
+  } catch { /* column already exists */ }
 
   return db;
 }

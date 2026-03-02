@@ -1,5 +1,48 @@
 # Release Notes
 
+## v0.3.1 — Multi-Mode + Player Identity (2026-03-02)
+
+### Added
+- **Player color picker** — choose from 6 origami-inspired colors before each multi game
+- **Player icon selection** — pick an icon and color to represent yourself in crews
+- **Obstacle persistence** — obstacles placed in multi mode are saved to the server for the next player
+- **Player-colored obstacles** — each player's obstacles appear in their chosen color
+- **One throw per turn** — in multi mode, player throws once, places one obstacle, then returns to crew room
+
+### Changed
+- Multi mode now auto-navigates back to crew room after placing an obstacle
+- HUD shows "Your Turn" in multi mode instead of throw count
+- `user_id` now falls back to localStorage when not passed in scene data
+
+---
+
+## v0.3.0 — Paper Crew + Routing (2026-03-02)
+
+### Added
+- **Paper Crew system** — invite-based crew rooms for async multiplayer
+  - Create crews, get a 6-character invite code, share with friends
+  - Join crews by entering an invite code
+  - Crew hub lists your crews with member counts
+  - Crew detail shows members, leaderboard, and invite code (click to copy)
+- **Client-side routing** — URL-based navigation with browser back/forward
+  - `/toss-paper/single` — solo practice mode
+  - `/toss-paper/multi/:crewId` — crew multiplayer with score tracking
+  - `/paper-crew`, `/paper-crew/create`, `/paper-crew/join`, `/paper-crew-room/:id`
+- **User identity** — lightweight localStorage-based username system
+- **Distance markers** — ground-level distance labels in Toss Paper
+- **Back button after obstacle placement** — players can exit after throwing and placing
+
+### Changed
+- Toss Paper now has two modes: solo practice (`/single`) and crew multiplayer (`/multi/:crewId`)
+- Backend API moved to port 3011
+- Express 5 SPA catch-all fixed for production builds
+
+### Fixed
+- CreateCrewScene restart bug (removeAllListeners killed transition timer)
+- Express 5 path-to-regexp catch-all route syntax (`/{*path}`)
+
+---
+
 ## v0.2.0 — Toss Paper MVP (2026-03-01)
 
 ### Added

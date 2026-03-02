@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
+import { pushRoute } from '../router';
+import { api } from '../utils/api';
+import { getUser, getPlayerColor, setPlayerColor, PLAYER_COLORS } from '../utils/user';
 
-type GameState = 'PRE_THROW' | 'DRAGGING' | 'FLYING' | 'LANDED' | 'PLACE_OBSTACLE';
+type GameState = 'COLOR_PICK' | 'PRE_THROW' | 'DRAGGING' | 'FLYING' | 'LANDED' | 'PLACE_OBSTACLE';
 
 const WORLD_WIDTH = 4000;
 const WORLD_HEIGHT = 600;
@@ -15,6 +18,12 @@ const OBSTACLE_TYPES = ['wall', 'ball', 'fan'] as const;
 const MAX_OBSTACLES = 20;
 
 export class TossPaperScene extends Phaser.Scene {
+  // Mode: 'single' = solo practice, 'multi' = crew multiplayer
+  private mode: 'single' | 'multi' = 'single';
+  private crewId: number | null = null;
+  private userId: number | null = null;
+  private playerColor = '#FF4F36';
+
   // State
   private gameState: GameState = 'PRE_THROW';
   private totalScore = 0;
@@ -49,8 +58,18 @@ export class TossPaperScene extends Phaser.Scene {
   // Back button
   private backText!: Phaser.GameObjects.Text;
 
+  // Color picker elements (cleaned up after selection)
+  private colorPickElements: Phaser.GameObjects.GameObject[] = [];
+
   constructor() {
     super({ key: 'TossPaperScene' });
+  }
+
+  init(data: any) {
+    this.mode = data?.mode === 'multi' ? 'multi' : 'single';
+    this.crewId = data?.crew_id || null;
+    this.userId = data?.user_id || getUser()?.id || null;
+    this.playerColor = getPlayerColor();
   }
 
   create() {
@@ -60,6 +79,7 @@ export class TossPaperScene extends Phaser.Scene {
     this.throwCount = 0;
     this.obstacleTypeIndex = 0;
     this.obstacles = [];
+    this.colorPickElements = [];
 
     this.launchOrigin = new Phaser.Math.Vector2(LAUNCH_X, LAUNCH_Y);
     this.dragHandle = new Phaser.Math.Vector2(LAUNCH_X, LAUNCH_Y);
@@ -72,8 +92,121 @@ export class TossPaperScene extends Phaser.Scene {
     this.setupGround();
     this.setupHUD();
     this.setupInput();
+
+    if (this.mode === 'multi') {
+      this.showColorPicker();
+    } else {
+      this.enterPreThrow();
+    }
+  }
+
+  // --- Color picker (multi mode) ---
+
+  private showColorPicker() {
+    this.gameState = 'COLOR_PICK';
+    const { width, height } = this.scale;
+
+    // Hide game HUD during color pick
+    this.scoreText.setVisible(false);
+    this.windText.setVisible(false);
+    this.throwText.setVisible(false);
+    this.backText.setVisible(false);
+    this.plane.setVisible(false);
+
+    const title = this.add.text(width / 2, height / 4, 'Choose Your Color', {
+      fontSize: '28px',
+      fontFamily: 'Georgia, serif',
+      color: '#1A1A1A',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+    this.colorPickElements.push(title);
+
+    const subtitle = this.add.text(width / 2, height / 4 + 40, 'Your obstacles will be this color', {
+      fontSize: '14px',
+      fontFamily: 'Georgia, serif',
+      color: '#6B6B6B',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+    this.colorPickElements.push(subtitle);
+
+    const cols = 3;
+    const dotSize = 28;
+    const gap = 80;
+    const startX = width / 2 - ((cols - 1) * gap) / 2;
+    const startY = height / 2 - 20;
+
+    PLAYER_COLORS.forEach((c, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = startX + col * gap;
+      const y = startY + row * 70;
+
+      const g = this.add.graphics().setScrollFactor(0).setDepth(200);
+      // Highlight ring if this is the current color
+      if (c.hex === this.playerColor) {
+        g.lineStyle(3, 0x1A1A1A, 1);
+        g.strokeCircle(x, y, dotSize + 4);
+      }
+      g.fillStyle(parseInt(c.hex.replace('#', '0x')), 1);
+      g.fillCircle(x, y, dotSize);
+      this.colorPickElements.push(g);
+
+      const label = this.add.text(x, y + dotSize + 10, c.label, {
+        fontSize: '11px',
+        fontFamily: 'Georgia, serif',
+        color: '#6B6B6B',
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+      this.colorPickElements.push(label);
+
+      // Invisible hit area
+      const hitZone = this.add.zone(x, y, dotSize * 2.5, dotSize * 2.5)
+        .setScrollFactor(0).setDepth(201).setInteractive({ useHandCursor: true });
+      hitZone.on('pointerdown', () => {
+        this.playerColor = c.hex;
+        setPlayerColor(c.hex);
+        this.clearColorPicker();
+        this.startMultiGame();
+      });
+      this.colorPickElements.push(hitZone);
+    });
+  }
+
+  private clearColorPicker() {
+    this.colorPickElements.forEach(el => el.destroy());
+    this.colorPickElements = [];
+  }
+
+  private async startMultiGame() {
+    // Show HUD
+    this.scoreText.setVisible(true);
+    this.windText.setVisible(true);
+    this.throwText.setVisible(true);
+    this.plane.setVisible(true);
+
+    // Load existing obstacles from the server
+    if (this.crewId) {
+      try {
+        const serverObstacles = await api.get<any[]>(`/obstacles/toss-paper?crew_id=${this.crewId}`);
+        for (const o of serverObstacles) {
+          this.placeServerObstacle(o.type, o.x, o.y, o.color);
+        }
+      } catch {
+        // Failed to load — continue without
+      }
+    }
+
     this.enterPreThrow();
   }
+
+  private placeServerObstacle(type: string, x: number, y: number, color: string) {
+    const obstacle = this.obstacleGroup.create(x, y, type) as Phaser.Physics.Arcade.Sprite;
+    obstacle.setOrigin(0, 0);
+    obstacle.refreshBody();
+    obstacle.setData('type', type);
+    // Tint with player color
+    obstacle.setTint(parseInt(color.replace('#', '0x')));
+    this.obstacles.push(obstacle);
+  }
+
+  // --- World setup ---
 
   private setupWorld() {
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
@@ -166,6 +299,21 @@ export class TossPaperScene extends Phaser.Scene {
     for (let x = 0; x < WORLD_WIDTH; x += GRID_SIZE * 5) {
       this.groundGraphics.fillCircle(x, GROUND_Y + 2, 1.5);
     }
+
+    // Distance markers along the ground
+    const markerInterval = GRID_SIZE * 5; // every 5 grid units = every 200px
+    for (let x = LAUNCH_X + markerInterval; x < WORLD_WIDTH; x += markerInterval) {
+      const dist = Math.floor((x - LAUNCH_X) / GRID_SIZE);
+      // Tick mark
+      this.groundGraphics.lineStyle(1, 0xC0B8B0, 0.6);
+      this.groundGraphics.lineBetween(x, GROUND_Y, x, GROUND_Y + 8);
+      // Distance label
+      this.add.text(x, GROUND_Y + 10, `${dist}`, {
+        fontSize: '10px',
+        fontFamily: 'monospace',
+        color: '#B0A898',
+      }).setOrigin(0.5, 0);
+    }
   }
 
   private setupHUD() {
@@ -206,7 +354,13 @@ export class TossPaperScene extends Phaser.Scene {
     this.backText.on('pointerout', () => this.backText.setColor('#6B6B6B'));
     this.backText.on('pointerdown', () => {
       this.cameras.main.stopFollow();
-      this.scene.start('MainMenuScene');
+      if (this.mode === 'multi' && this.crewId) {
+        pushRoute(`/paper-crew-room/${this.crewId}`);
+        this.scene.start('CrewDetailScene', { crewId: this.crewId });
+      } else {
+        pushRoute('/');
+        this.scene.start('MainMenuScene');
+      }
     });
   }
 
@@ -247,7 +401,7 @@ export class TossPaperScene extends Phaser.Scene {
     });
 
     // Update HUD
-    this.throwText.setText(`Throw ${this.throwCount}`);
+    this.throwText.setText(this.mode === 'multi' ? 'Your Turn' : `Throw ${this.throwCount}`);
     this.scoreText.setText(`SCORE: ${this.totalScore}`);
     this.distanceText.setVisible(false);
     this.powerText.setVisible(false);
@@ -323,8 +477,18 @@ export class TossPaperScene extends Phaser.Scene {
     this.distanceText.setText(`DIST: ${distance} pts`);
     this.stateHintText.setText(`+${distance} points!`);
 
+    // Post score to server in multi mode
+    if (this.mode === 'multi' && this.userId) {
+      api.post('/scores', {
+        user_id: this.userId,
+        game: 'toss-paper',
+        score: this.totalScore,
+        crew_id: this.crewId,
+      }).catch(() => {}); // fire and forget
+    }
+
     // Distance marker in the world
-    const marker = this.add.text(this.plane.x, GROUND_Y + 8, `${distance}`, {
+    this.add.text(this.plane.x, GROUND_Y + 8, `${distance}`, {
       fontSize: '12px',
       fontFamily: 'monospace',
       color: '#FF4F36',
@@ -355,14 +519,14 @@ export class TossPaperScene extends Phaser.Scene {
     const typeIndex = this.obstacleTypeIndex % OBSTACLE_TYPES.length;
     const obstacleType = OBSTACLE_TYPES[typeIndex];
 
-    // Create ghost obstacle
+    // Create ghost obstacle with player color
     this.ghostObstacle = this.add.graphics();
     this.drawGhostObstacle(this.ghostObstacle, obstacleType);
     this.ghostObstacle.setAlpha(0.5);
     this.ghostObstacle.setDepth(50);
 
     this.stateHintText.setText(`Click to place: ${this.getObstacleLabel(obstacleType)}`);
-    this.backText.setVisible(false);
+    this.backText.setVisible(true);
     this.distanceText.setVisible(false);
   }
 
@@ -390,15 +554,39 @@ export class TossPaperScene extends Phaser.Scene {
     }
 
     // Create the obstacle sprite and add to static group
-    let textureKey = obstacleType;
-    const obstacle = this.obstacleGroup.create(gridX, gridY, textureKey) as Phaser.Physics.Arcade.Sprite;
+    const obstacle = this.obstacleGroup.create(gridX, gridY, obstacleType) as Phaser.Physics.Arcade.Sprite;
     obstacle.setOrigin(0, 0);
     obstacle.refreshBody();
     obstacle.setData('type', obstacleType);
+    // Tint with player's color
+    obstacle.setTint(parseInt(this.playerColor.replace('#', '0x')));
     this.obstacles.push(obstacle);
 
     this.obstacleTypeIndex++;
-    this.enterPreThrow();
+
+    if (this.mode === 'multi' && this.crewId) {
+      // Save obstacle to server, then navigate back to crew room
+      api.post('/obstacles', {
+        crew_id: this.crewId,
+        game: 'toss-paper',
+        user_id: this.userId,
+        type: obstacleType,
+        x: gridX,
+        y: gridY,
+        color: this.playerColor,
+      }).catch(() => {}); // fire and forget
+
+      this.stateHintText.setText('Obstacle placed! Returning...');
+      this.backText.setVisible(false);
+
+      this.time.delayedCall(1200, () => {
+        pushRoute(`/paper-crew-room/${this.crewId}`);
+        this.scene.start('CrewDetailScene', { crewId: this.crewId });
+      });
+    } else {
+      // Single mode: continue playing
+      this.enterPreThrow();
+    }
   }
 
   // --- Input handlers ---
@@ -590,20 +778,21 @@ export class TossPaperScene extends Phaser.Scene {
   }
 
   private drawGhostObstacle(g: Phaser.GameObjects.Graphics, type: string) {
+    const colorInt = parseInt(this.playerColor.replace('#', '0x'));
     if (type === 'wall') {
-      g.fillStyle(0xE8E8E8, 1);
+      g.fillStyle(colorInt, 0.3);
       g.fillRect(0, 0, 80, 40);
-      g.lineStyle(2, 0xFF4F36, 1);
+      g.lineStyle(2, colorInt, 1);
       g.strokeRect(0, 0, 80, 40);
     } else if (type === 'ball') {
-      g.fillStyle(0xD0D0D0, 1);
+      g.fillStyle(colorInt, 0.3);
       g.fillCircle(20, 20, 18);
-      g.lineStyle(2, 0xFF4F36, 1);
+      g.lineStyle(2, colorInt, 1);
       g.strokeCircle(20, 20, 18);
     } else if (type === 'fan') {
-      g.fillStyle(0xEEF4FF, 1);
+      g.fillStyle(colorInt, 0.3);
       g.fillRect(0, 0, 40, 80);
-      g.lineStyle(2, 0xFF4F36, 1);
+      g.lineStyle(2, colorInt, 1);
       g.strokeRect(0, 0, 40, 80);
     }
   }
