@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
+import { TossPaperScene } from './scenes/TossPaperScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -8,7 +9,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: 600,
   parent: document.body,
   backgroundColor: '#FFFFFF',
-  scene: [BootScene, MainMenuScene],
+  scene: [BootScene, MainMenuScene, TossPaperScene],
   physics: {
     default: 'arcade',
     arcade: {
@@ -22,4 +23,5 @@ const config: Phaser.Types.Core.GameConfig = {
   },
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+(window as any).__PAPER_GAME__ = game;

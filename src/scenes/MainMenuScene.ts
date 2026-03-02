@@ -51,8 +51,11 @@ export class MainMenuScene extends Phaser.Scene {
       text.on('pointerover', () => text.setColor('#FF8F01'));
       text.on('pointerout', () => text.setColor('#1A1A1A'));
       text.on('pointerdown', () => {
-        console.log(`Navigate to: ${item.scene}`);
-        // this.scene.start(item.scene);
+        if (item.scene === 'TossPaperScene') {
+          this.scene.start(item.scene);
+        } else {
+          console.log(`Navigate to: ${item.scene}`);
+        }
       });
     });
   }
