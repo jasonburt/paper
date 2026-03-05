@@ -11,3 +11,4 @@ Each game in the Paper collection has its own spec document describing mechanics
 
 - [Paper Crew](./paper_crew_spec.md) - Invite system, crews, and shared leaderboards
 - [Origami Scanner](./origami_scanner_spec.md) - Photo-to-sprite pipeline
+- [Placeable Objects](./placeable_objects_spec.md) - Searchable object catalog and placement system

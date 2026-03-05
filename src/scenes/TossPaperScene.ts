@@ -2,8 +2,10 @@ import Phaser from 'phaser';
 import { pushRoute } from '../router';
 import { api } from '../utils/api';
 import { getUser, getPlayerColor, setPlayerColor, PLAYER_COLORS } from '../utils/user';
+import { createDOMInput, removeDOMInput } from '../utils/dom-input';
+import { TOSS_PAPER_OBJECTS, searchObjects, type PlaceableObject } from '../data/placeable-objects';
 
-type GameState = 'COLOR_PICK' | 'PRE_THROW' | 'DRAGGING' | 'FLYING' | 'LANDED' | 'PLACE_OBSTACLE';
+type GameState = 'COLOR_PICK' | 'PRE_THROW' | 'DRAGGING' | 'FLYING' | 'LANDED' | 'PLACE_OBSTACLE' | 'OBJECT_PICKER';
 
 const WORLD_WIDTH = 4000;
 const WORLD_HEIGHT = 600;
@@ -14,7 +16,6 @@ const MAX_DRAG_DISTANCE = 160;
 const MAX_SPEED = 950;
 const GRAVITY = 200;
 const GRID_SIZE = 40;
-const OBSTACLE_TYPES = ['wall', 'ball', 'fan'] as const;
 const MAX_OBSTACLES = 20;
 
 export class TossPaperScene extends Phaser.Scene {
@@ -29,7 +30,7 @@ export class TossPaperScene extends Phaser.Scene {
   private totalScore = 0;
   private throwCount = 0;
   private windStrength = 0;
-  private obstacleTypeIndex = 0;
+  private selectedObject: PlaceableObject | null = null;
 
   // Physics objects
   private plane!: Phaser.Physics.Arcade.Sprite;
@@ -61,6 +62,11 @@ export class TossPaperScene extends Phaser.Scene {
   // Color picker elements (cleaned up after selection)
   private colorPickElements: Phaser.GameObjects.GameObject[] = [];
 
+  // Object picker elements
+  private pickerElements: Phaser.GameObjects.GameObject[] = [];
+  private searchInput: HTMLInputElement | null = null;
+  private pickerJustClosed = false;
+
   constructor() {
     super({ key: 'TossPaperScene' });
   }
@@ -77,9 +83,11 @@ export class TossPaperScene extends Phaser.Scene {
     this.gameState = 'PRE_THROW';
     this.totalScore = 0;
     this.throwCount = 0;
-    this.obstacleTypeIndex = 0;
+    this.selectedObject = null;
     this.obstacles = [];
     this.colorPickElements = [];
+    this.pickerElements = [];
+    this.searchInput = null;
 
     this.launchOrigin = new Phaser.Math.Vector2(LAUNCH_X, LAUNCH_Y);
     this.dragHandle = new Phaser.Math.Vector2(LAUNCH_X, LAUNCH_Y);
@@ -271,6 +279,102 @@ export class TossPaperScene extends Phaser.Scene {
       g.lineStyle(1, 0x4992FF, 0.3);
       g.strokeRect(0, 0, 40, 80);
       g.generateTexture('fan', 40, 80);
+      g.destroy();
+    }
+
+    // Sticky Note texture
+    if (!this.textures.exists('sticky_note')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xFFF59D, 1);
+      g.fillRect(0, 0, 40, 40);
+      g.lineStyle(1, 0xE6DB80, 1);
+      g.strokeRect(0, 0, 40, 40);
+      // Fold corner
+      g.fillStyle(0xE6DB80, 1);
+      g.fillTriangle(28, 0, 40, 0, 40, 12);
+      // Lines
+      g.lineStyle(1, 0xD4C960, 0.5);
+      g.lineBetween(4, 12, 36, 12);
+      g.lineBetween(4, 20, 36, 20);
+      g.lineBetween(4, 28, 28, 28);
+      g.generateTexture('sticky_note', 40, 40);
+      g.destroy();
+    }
+
+    // Tape Roll texture
+    if (!this.textures.exists('tape_roll')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xE8DCC8, 1);
+      g.fillRect(0, 0, 40, 80);
+      g.lineStyle(1, 0xC8B898, 1);
+      g.strokeRect(0, 0, 40, 80);
+      // Tape ring circles
+      g.lineStyle(2, 0xC8B898, 0.8);
+      g.strokeCircle(20, 20, 14);
+      g.strokeCircle(20, 60, 14);
+      // Inner holes
+      g.fillStyle(0xFAF5EC, 1);
+      g.fillCircle(20, 20, 6);
+      g.fillCircle(20, 60, 6);
+      g.generateTexture('tape_roll', 40, 80);
+      g.destroy();
+    }
+
+    // Paper Cup texture
+    if (!this.textures.exists('paper_cup')) {
+      const g = this.add.graphics();
+      // Cup body (trapezoid)
+      g.fillStyle(0xF0F0F0, 1);
+      g.fillTriangle(4, 0, 36, 0, 32, 40);
+      g.fillTriangle(4, 0, 8, 40, 32, 40);
+      g.lineStyle(1, 0xCCCCCC, 1);
+      g.lineBetween(4, 0, 36, 0);
+      g.lineBetween(4, 0, 8, 40);
+      g.lineBetween(36, 0, 32, 40);
+      g.lineBetween(8, 40, 32, 40);
+      // Rim
+      g.lineStyle(2, 0xCCCCCC, 1);
+      g.lineBetween(2, 0, 38, 0);
+      // Stripe
+      g.lineStyle(1, 0x4992FF, 0.4);
+      g.lineBetween(6, 14, 34, 14);
+      g.generateTexture('paper_cup', 40, 40);
+      g.destroy();
+    }
+
+    // Origami Crane texture
+    if (!this.textures.exists('origami_crane')) {
+      const g = this.add.graphics();
+      // Body
+      g.fillStyle(0xFF8F01, 1);
+      g.fillTriangle(20, 4, 4, 28, 36, 28);
+      // Wings
+      g.fillStyle(0xFFA030, 1);
+      g.fillTriangle(20, 12, 0, 24, 20, 24);
+      g.fillTriangle(20, 12, 40, 24, 20, 24);
+      // Head
+      g.fillStyle(0xFF8F01, 1);
+      g.fillTriangle(20, 4, 16, 12, 24, 12);
+      // Tail
+      g.fillStyle(0xE07800, 1);
+      g.fillTriangle(16, 28, 24, 28, 20, 38);
+      g.generateTexture('origami_crane', 40, 40);
+      g.destroy();
+    }
+
+    // Coming soon placeholder (gray silhouette)
+    if (!this.textures.exists('coming_soon')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xE0E0E0, 1);
+      g.fillRoundedRect(4, 4, 32, 32, 4);
+      g.lineStyle(1, 0xCCCCCC, 1);
+      g.strokeRoundedRect(4, 4, 32, 32, 4);
+      // Question mark
+      g.fillStyle(0xBBBBBB, 1);
+      g.fillCircle(20, 16, 4);
+      g.fillRect(18, 20, 4, 6);
+      g.fillCircle(20, 30, 2);
+      g.generateTexture('coming_soon', 40, 40);
       g.destroy();
     }
   }
@@ -501,7 +605,8 @@ export class TossPaperScene extends Phaser.Scene {
   }
 
   private enterPlaceObstacle() {
-    this.gameState = 'PLACE_OBSTACLE';
+    this.gameState = 'OBJECT_PICKER';
+    this.selectedObject = null;
 
     // Stop following
     this.cameras.main.stopFollow();
@@ -515,24 +620,218 @@ export class TossPaperScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
 
-    // Get current obstacle type
-    const typeIndex = this.obstacleTypeIndex % OBSTACLE_TYPES.length;
-    const obstacleType = OBSTACLE_TYPES[typeIndex];
+    this.distanceText.setVisible(false);
+    this.backText.setVisible(false);
+    this.stateHintText.setText('');
 
-    // Create ghost obstacle with player color
+    // Show object picker after camera scrolls back
+    this.time.delayedCall(650, () => {
+      this.showObjectPicker();
+    });
+  }
+
+  // --- Object Picker UI ---
+
+  private showObjectPicker(filterQuery = '') {
+    // Clear previous picker elements
+    this.clearObjectPicker();
+
+    const { width, height } = this.scale;
+    const panelY = height * 0.35;
+    const panelH = height - panelY;
+
+    // Semi-transparent background overlay
+    const overlay = this.add.graphics().setScrollFactor(0).setDepth(300);
+    overlay.fillStyle(0x000000, 0.2);
+    overlay.fillRect(0, 0, width, panelY);
+    this.pickerElements.push(overlay);
+
+    // Panel background
+    const panel = this.add.graphics().setScrollFactor(0).setDepth(300);
+    panel.fillStyle(0xFFFFFF, 1);
+    panel.fillRoundedRect(0, panelY - 12, width, panelH + 12, { tl: 12, tr: 12, bl: 0, br: 0 });
+    panel.lineStyle(1, 0xE0E0E0, 1);
+    panel.lineBetween(0, panelY - 12, width, panelY - 12);
+    this.pickerElements.push(panel);
+
+    // Title
+    const title = this.add.text(width / 2, panelY + 8, 'Place something for the next player', {
+      fontSize: '14px',
+      fontFamily: 'Georgia, serif',
+      color: '#6B6B6B',
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(301);
+    this.pickerElements.push(title);
+
+    // Search input (DOM overlay)
+    if (!this.searchInput) {
+      this.searchInput = createDOMInput(160, panelY + 32, 480, {
+        placeholder: 'Search objects...',
+        maxLength: 30,
+      });
+      this.searchInput.addEventListener('input', () => {
+        this.showObjectPicker(this.searchInput?.value || '');
+      });
+    }
+
+    // Filter objects
+    const allObjects = TOSS_PAPER_OBJECTS;
+    const filtered = searchObjects(allObjects, filterQuery);
+    const available = filtered.filter(o => o.status === 'available');
+    const comingSoon = filtered.filter(o => o.status === 'coming_soon');
+    const sorted = [...available, ...comingSoon];
+
+    // Grid layout
+    const cols = 4;
+    const cellW = 100;
+    const cellH = 80;
+    const gridStartX = (width - cols * cellW) / 2;
+    const gridStartY = panelY + 80;
+
+    if (sorted.length === 0) {
+      const empty = this.add.text(width / 2, gridStartY + 40, 'No objects found', {
+        fontSize: '14px',
+        fontFamily: 'Georgia, serif',
+        color: '#AAAAAA',
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+      this.pickerElements.push(empty);
+    }
+
+    sorted.forEach((obj, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cx = gridStartX + col * cellW + cellW / 2;
+      const cy = gridStartY + row * cellH;
+
+      if (cy + cellH > height) return; // off-screen
+
+      const isComingSoon = obj.status === 'coming_soon';
+      const spriteKey = isComingSoon ? 'coming_soon' : obj.spriteKey;
+
+      // Thumbnail sprite
+      if (this.textures.exists(spriteKey)) {
+        const thumb = this.add.image(cx, cy + 12, spriteKey)
+          .setScrollFactor(0).setDepth(302);
+        // Scale to fit 40x40 box
+        const tex = this.textures.get(spriteKey).getSourceImage();
+        const scale = Math.min(40 / tex.width, 40 / tex.height);
+        thumb.setScale(scale);
+        if (isComingSoon) thumb.setAlpha(0.4);
+        this.pickerElements.push(thumb);
+      }
+
+      // Name label
+      const label = this.add.text(cx, cy + 38, obj.name, {
+        fontSize: '11px',
+        fontFamily: 'Georgia, serif',
+        color: isComingSoon ? '#BBBBBB' : '#1A1A1A',
+      }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(302);
+      this.pickerElements.push(label);
+
+      // "Coming Soon" sub-label
+      if (isComingSoon) {
+        const soon = this.add.text(cx, cy + 52, 'Coming Soon', {
+          fontSize: '9px',
+          fontFamily: 'Georgia, serif',
+          color: '#CCCCCC',
+          fontStyle: 'italic',
+        }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(302);
+        this.pickerElements.push(soon);
+      }
+
+      // Hit zone
+      const hitZone = this.add.zone(cx, cy + 20, cellW - 8, cellH - 4)
+        .setScrollFactor(0).setDepth(303).setInteractive({ useHandCursor: !isComingSoon });
+
+      if (isComingSoon) {
+        hitZone.on('pointerdown', () => {
+          this.showToast('Coming soon!');
+        });
+      } else {
+        // Hover highlight
+        const highlight = this.add.graphics().setScrollFactor(0).setDepth(301).setAlpha(0);
+        highlight.fillStyle(0x4992FF, 0.1);
+        highlight.fillRoundedRect(cx - cellW / 2 + 4, cy - 8, cellW - 8, cellH - 4, 6);
+        this.pickerElements.push(highlight);
+
+        hitZone.on('pointerover', () => highlight.setAlpha(1));
+        hitZone.on('pointerout', () => highlight.setAlpha(0));
+        hitZone.on('pointerdown', () => {
+          this.selectObject(obj);
+        });
+      }
+      this.pickerElements.push(hitZone);
+    });
+
+    // Skip button
+    const skipBtn = this.add.text(width / 2, height - 20, 'Skip', {
+      fontSize: '14px',
+      fontFamily: 'Georgia, serif',
+      color: '#AAAAAA',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(302)
+      .setInteractive({ useHandCursor: true });
+    skipBtn.on('pointerover', () => skipBtn.setColor('#FF8F01'));
+    skipBtn.on('pointerout', () => skipBtn.setColor('#AAAAAA'));
+    skipBtn.on('pointerdown', () => {
+      this.clearObjectPicker();
+      if (this.mode === 'multi' && this.crewId) {
+        this.stateHintText.setText('Skipped! Returning...');
+        this.time.delayedCall(800, () => {
+          pushRoute(`/paper-crew-room/${this.crewId}`);
+          this.scene.stop();
+        });
+      } else {
+        this.enterPreThrow();
+      }
+    });
+    this.pickerElements.push(skipBtn);
+  }
+
+  private clearObjectPicker() {
+    this.pickerElements.forEach(el => el.destroy());
+    this.pickerElements = [];
+    removeDOMInput(this.searchInput);
+    this.searchInput = null;
+  }
+
+  private selectObject(obj: PlaceableObject) {
+    this.selectedObject = obj;
+    this.clearObjectPicker();
+
+    this.gameState = 'PLACE_OBSTACLE';
+    this.pickerJustClosed = true;
+
+    // Create ghost obstacle
     this.ghostObstacle = this.add.graphics();
-    this.drawGhostObstacle(this.ghostObstacle, obstacleType);
+    this.drawGhostObstacle(this.ghostObstacle, obj.spriteKey);
     this.ghostObstacle.setAlpha(0.5);
     this.ghostObstacle.setDepth(50);
 
-    this.stateHintText.setText(`Click to place: ${this.getObstacleLabel(obstacleType)}`);
+    this.stateHintText.setText(`Click to place: ${obj.name}`);
     this.backText.setVisible(true);
     this.distanceText.setVisible(false);
   }
 
+  private showToast(message: string) {
+    const { width } = this.scale;
+    const toast = this.add.text(width / 2, 20, message, {
+      fontSize: '14px',
+      fontFamily: 'Georgia, serif',
+      color: '#FFFFFF',
+      backgroundColor: '#333333',
+      padding: { x: 16, y: 8 },
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(400);
+    this.tweens.add({
+      targets: toast,
+      alpha: 0,
+      delay: 1200,
+      duration: 400,
+      onComplete: () => toast.destroy(),
+    });
+  }
+
   private confirmObstaclePlacement(worldX: number, worldY: number) {
-    const typeIndex = this.obstacleTypeIndex % OBSTACLE_TYPES.length;
-    const obstacleType = OBSTACLE_TYPES[typeIndex];
+    if (!this.selectedObject) return;
+    const obj = this.selectedObject;
 
     // Snap to grid
     const gridX = Math.floor(worldX / GRID_SIZE) * GRID_SIZE;
@@ -554,15 +853,15 @@ export class TossPaperScene extends Phaser.Scene {
     }
 
     // Create the obstacle sprite and add to static group
-    const obstacle = this.obstacleGroup.create(gridX, gridY, obstacleType) as Phaser.Physics.Arcade.Sprite;
+    const obstacle = this.obstacleGroup.create(gridX, gridY, obj.spriteKey) as Phaser.Physics.Arcade.Sprite;
     obstacle.setOrigin(0, 0);
     obstacle.refreshBody();
-    obstacle.setData('type', obstacleType);
+    obstacle.setData('type', obj.id);
     // Tint with player's color
     obstacle.setTint(parseInt(this.playerColor.replace('#', '0x')));
     this.obstacles.push(obstacle);
 
-    this.obstacleTypeIndex++;
+    this.selectedObject = null;
 
     if (this.mode === 'multi' && this.crewId) {
       // Save obstacle to server, then navigate back to crew room
@@ -570,7 +869,7 @@ export class TossPaperScene extends Phaser.Scene {
         crew_id: this.crewId,
         game: 'toss-paper',
         user_id: this.userId,
-        type: obstacleType,
+        type: obj.id,
         x: gridX,
         y: gridY,
         color: this.playerColor,
@@ -592,6 +891,10 @@ export class TossPaperScene extends Phaser.Scene {
   // --- Input handlers ---
 
   private onPointerDown(pointer: Phaser.Input.Pointer) {
+    if (this.gameState === 'OBJECT_PICKER') {
+      // Picker UI handles its own clicks via zones
+      return;
+    }
     if (this.gameState === 'PRE_THROW') {
       // Check if near the plane
       const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
@@ -606,6 +909,10 @@ export class TossPaperScene extends Phaser.Scene {
         this.stateHintText.setText('Pull back and release!');
       }
     } else if (this.gameState === 'PLACE_OBSTACLE') {
+      if (this.pickerJustClosed) {
+        this.pickerJustClosed = false;
+        return;
+      }
       const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
       this.confirmObstaclePlacement(worldPoint.x, worldPoint.y);
     }
@@ -622,7 +929,7 @@ export class TossPaperScene extends Phaser.Scene {
         this.launchOrigin.x + Math.cos(angle) * dragDist,
         this.launchOrigin.y + Math.sin(angle) * dragDist
       );
-    } else if (this.gameState === 'PLACE_OBSTACLE' && this.ghostObstacle) {
+    } else if ((this.gameState === 'PLACE_OBSTACLE') && this.ghostObstacle) {
       const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
       const gridX = Math.floor(worldPoint.x / GRID_SIZE) * GRID_SIZE;
       const gridY = Math.floor(worldPoint.y / GRID_SIZE) * GRID_SIZE;
@@ -755,14 +1062,33 @@ export class TossPaperScene extends Phaser.Scene {
     const type = obstacle.getData('type');
     const body = plane.body as Phaser.Physics.Arcade.Body;
 
-    if (type === 'wall') {
+    // Look up the object definition for its effect category
+    const objDef = TOSS_PAPER_OBJECTS.find(o => o.id === type);
+    const effect = objDef?.effect;
+
+    if (effect === 'cosmetic') {
+      // No gameplay effect
+      return;
+    }
+
+    if (type === 'wall' || type === 'sticky_note' || type === 'tape_roll') {
+      // Blockers — stop the plane
       this.triggerLanded();
-    } else if (type === 'ball') {
+    } else if (type === 'ball' || type === 'paper_cup') {
+      // Bouncy deflection
       body.velocity.x *= -0.6;
       body.velocity.y += Phaser.Math.Between(-80, 80);
     } else if (type === 'fan') {
+      // Wind gust
       body.velocity.x += Phaser.Math.Between(-120, 120);
       body.velocity.y += Phaser.Math.Between(-60, 60);
+    } else if (effect === 'blocker') {
+      // Fallback for any future blocker
+      this.triggerLanded();
+    } else if (effect === 'environmental') {
+      // Fallback for any future environmental
+      body.velocity.x += Phaser.Math.Between(-80, 80);
+      body.velocity.y += Phaser.Math.Between(-40, 40);
     }
   }
 
@@ -777,30 +1103,15 @@ export class TossPaperScene extends Phaser.Scene {
     this.windText.setText(`Wind: ${arrow} ${absWind > 0 ? absWind : 'calm'}`);
   }
 
-  private drawGhostObstacle(g: Phaser.GameObjects.Graphics, type: string) {
+  private drawGhostObstacle(g: Phaser.GameObjects.Graphics, spriteKey: string) {
     const colorInt = parseInt(this.playerColor.replace('#', '0x'));
-    if (type === 'wall') {
-      g.fillStyle(colorInt, 0.3);
-      g.fillRect(0, 0, 80, 40);
-      g.lineStyle(2, colorInt, 1);
-      g.strokeRect(0, 0, 80, 40);
-    } else if (type === 'ball') {
-      g.fillStyle(colorInt, 0.3);
-      g.fillCircle(20, 20, 18);
-      g.lineStyle(2, colorInt, 1);
-      g.strokeCircle(20, 20, 18);
-    } else if (type === 'fan') {
-      g.fillStyle(colorInt, 0.3);
-      g.fillRect(0, 0, 40, 80);
-      g.lineStyle(2, colorInt, 1);
-      g.strokeRect(0, 0, 40, 80);
-    }
-  }
+    const objDef = TOSS_PAPER_OBJECTS.find(o => o.spriteKey === spriteKey);
+    const w = (objDef?.gridWidth || 1) * GRID_SIZE;
+    const h = (objDef?.gridHeight || 1) * GRID_SIZE;
 
-  private getObstacleLabel(type: string): string {
-    if (type === 'wall') return 'Paper Wall';
-    if (type === 'ball') return 'Crumpled Ball';
-    if (type === 'fan') return 'Paper Fan';
-    return type;
+    g.fillStyle(colorInt, 0.3);
+    g.fillRect(0, 0, w, h);
+    g.lineStyle(2, colorInt, 1);
+    g.strokeRect(0, 0, w, h);
   }
 }
