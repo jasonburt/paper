@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import { pushRoute } from '../router';
 import { api } from '../utils/api';
-import { getUser } from '../utils/user';
+import { getUser, drawPlayerIcon } from '../utils/user';
 
 interface CrewData {
   id: number;
   name: string;
   invite_code: string;
-  members: Array<{ id: number; username: string }>;
+  members: Array<{ id: number; username: string; icon?: string; color?: string }>;
   game_count: number;
 }
 
@@ -80,28 +80,35 @@ export class CrewDetailScene extends Phaser.Scene {
       });
     });
 
-    // Members section
+    // Members section with icons
     this.add.text(40, 100, 'Members', {
       fontSize: '16px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
     });
 
-    const memberNames = this.crew.members.map(m => m.username).join(', ');
-    this.add.text(40, 122, memberNames, {
-      fontSize: '14px', fontFamily: 'monospace', color: '#1A1A1A',
-      wordWrap: { width: width - 80 },
+    const memberG = this.add.graphics();
+    this.crew.members.forEach((m, i) => {
+      const mx = 50 + i * 80;
+      const my = 125;
+      const iconKey = m.icon || 'plane';
+      const colorHex = m.color || '#FF4F36';
+      drawPlayerIcon(memberG, iconKey, mx, my, 18, colorHex);
+      this.add.text(mx + 9, my + 22, m.username, {
+        fontSize: '10px', fontFamily: 'monospace', color: '#1A1A1A',
+      }).setOrigin(0.5, 0);
     });
 
     // Divider
+    const membersBottom = 160;
     const divider = this.add.graphics();
     divider.lineStyle(1, 0xD0D0D0, 0.6);
-    divider.lineBetween(40, 155, width - 40, 155);
+    divider.lineBetween(40, membersBottom, width - 40, membersBottom);
 
     // Leaderboard
-    this.add.text(40, 168, 'Leaderboard — Toss Paper', {
+    this.add.text(40, membersBottom + 8, 'Leaderboard — Toss Paper', {
       fontSize: '16px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
     });
 
-    this.loadLeaderboard('toss-paper', 190);
+    this.loadLeaderboard('toss-paper', membersBottom + 30);
 
     // Play buttons
     const playY = Math.max(380, height - 140);

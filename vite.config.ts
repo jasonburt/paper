@@ -1,19 +1,6 @@
-import { defineConfig, type Plugin } from 'vite';
-
-// SPA fallback plugin — serves index.html for all non-file, non-API routes
-function spaFallback(): Plugin {
-  return {
-    name: 'spa-fallback',
-    configureServer(server) {
-      server.middlewares.use((req, _res, next) => {
-        if (req.url && !req.url.startsWith('/api') && !req.url.includes('.')) {
-          req.url = '/index.html';
-        }
-        next();
-      });
-    },
-  };
-}
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   base: '/',
@@ -21,7 +8,7 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
   },
-  plugins: [spaFallback()],
+  plugins: [vue(), tailwindcss()],
   server: {
     port: 5173,
     proxy: {

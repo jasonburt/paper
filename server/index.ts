@@ -1,10 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { initDb } from './db';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const app = express();
-const PORT = 3011;
+const PORT = Number(process.env.PORT) || 3011;
 
 app.use(cors());
 app.use(express.json());
@@ -185,10 +188,13 @@ app.post('/api/obstacles', (req, res) => {
 
 // SPA catch-all (production only — Vite handles this in dev)
 if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(import.meta.dirname ?? '.', '../dist');
+  const distPath = path.join(__dirname, '../dist');
   app.use(express.static(distPath));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Paper API running on http://localhost:${PORT}`);
 });

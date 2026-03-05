@@ -5,7 +5,7 @@
       "name": "paper-dev",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite"],
-      "port": 3000
+      "port": 5173
     }
   ]
 }
