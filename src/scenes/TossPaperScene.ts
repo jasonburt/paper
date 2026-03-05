@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { getUser, getPlayerColor, setPlayerColor, PLAYER_COLORS } from '../utils/user';
 import { createDOMInput, removeDOMInput } from '../utils/dom-input';
 import { TOSS_PAPER_OBJECTS, searchObjects, type PlaceableObject } from '../data/placeable-objects';
+import { getResponsiveConfig, type ResponsiveConfig } from '../utils/responsive';
 
 type GameState = 'COLOR_PICK' | 'PRE_THROW' | 'DRAGGING' | 'FLYING' | 'LANDED' | 'PLACE_OBSTACLE' | 'OBJECT_PICKER';
 
@@ -67,6 +68,9 @@ export class TossPaperScene extends Phaser.Scene {
   private searchInput: HTMLInputElement | null = null;
   private pickerJustClosed = false;
 
+  // Responsive
+  private rc!: ResponsiveConfig;
+
   constructor() {
     super({ key: 'TossPaperScene' });
   }
@@ -79,6 +83,9 @@ export class TossPaperScene extends Phaser.Scene {
   }
 
   create() {
+    // Responsive config — must come first
+    this.rc = getResponsiveConfig();
+
     // Reset state
     this.gameState = 'PRE_THROW';
     this.totalScore = 0;
@@ -421,39 +428,50 @@ export class TossPaperScene extends Phaser.Scene {
   }
 
   private setupHUD() {
+    const { fontSize, padding } = this.rc;
+    const { width, height } = this.scale;
+
     const textStyle = (size: number, color: string): Phaser.Types.GameObjects.Text.TextStyle => ({
       fontSize: `${size}px`,
       fontFamily: 'monospace',
       color,
     });
 
-    this.scoreText = this.add.text(16, 12, 'SCORE: 0', textStyle(18, '#1A1A1A'))
+    this.scoreText = this.add.text(padding.edge, padding.hudTop, 'SCORE: 0', textStyle(fontSize.hud, '#1A1A1A'))
       .setScrollFactor(0).setDepth(100);
 
-    this.windText = this.add.text(400, 12, '', textStyle(18, '#4992FF'))
+    this.windText = this.add.text(width / 2, padding.hudTop, '', textStyle(fontSize.hud, '#4992FF'))
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
 
-    this.throwText = this.add.text(784, 12, 'Throw 1', textStyle(16, '#6B6B6B'))
+    this.throwText = this.add.text(width - padding.edge, padding.hudTop, 'Throw 1', textStyle(fontSize.hudSmall, '#6B6B6B'))
       .setOrigin(1, 0).setScrollFactor(0).setDepth(100);
 
-    this.distanceText = this.add.text(16, 570, '', textStyle(16, '#1A1A1A'))
+    this.distanceText = this.add.text(padding.edge, height - 30 * this.rc.uiScale, '', textStyle(fontSize.body, '#1A1A1A'))
       .setScrollFactor(0).setDepth(100).setVisible(false);
 
-    this.powerText = this.add.text(784, 570, '', textStyle(16, '#FF8F01'))
+    this.powerText = this.add.text(width - padding.edge, height - 30 * this.rc.uiScale, '', textStyle(fontSize.body, '#FF8F01'))
       .setOrigin(1, 0).setScrollFactor(0).setDepth(100).setVisible(false);
 
-    this.stateHintText = this.add.text(400, 555, '', {
-      fontSize: '16px',
+    this.stateHintText = this.add.text(width / 2, height - 45 * this.rc.uiScale, '', {
+      fontSize: `${fontSize.body}px`,
       fontFamily: 'Georgia, serif',
       color: '#6B6B6B',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
 
-    // Back button
-    this.backText = this.add.text(16, 570, '← Back', {
-      fontSize: '14px',
+    // Back button — larger on mobile
+    const backFontSize = this.rc.isMobile ? fontSize.button : 14;
+    this.backText = this.add.text(padding.edge, height - 45 * this.rc.uiScale, '← Back', {
+      fontSize: `${backFontSize}px`,
       fontFamily: 'Georgia, serif',
       color: '#6B6B6B',
     }).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
+    // Expand hit area for mobile
+    if (this.rc.isMobile) {
+      this.backText.setInteractive(
+        new Phaser.Geom.Rectangle(-10, -10, this.backText.width + 20, this.backText.height + 20),
+        Phaser.Geom.Rectangle.Contains
+      );
+    }
     this.backText.on('pointerover', () => this.backText.setColor('#FF8F01'));
     this.backText.on('pointerout', () => this.backText.setColor('#6B6B6B'));
     this.backText.on('pointerdown', () => {
@@ -633,11 +651,18 @@ export class TossPaperScene extends Phaser.Scene {
   // --- Object Picker UI ---
 
   private showObjectPicker(filterQuery = '') {
-    // Clear previous picker elements
-    this.clearObjectPicker();
+    // Clear previous picker elements (but preserve search input if re-filtering)
+    const keepSearch = !!this.searchInput;
+    this.pickerElements.forEach(el => el.destroy());
+    this.pickerElements = [];
+    if (!keepSearch) {
+      removeDOMInput(this.searchInput);
+      this.searchInput = null;
+    }
 
     const { width, height } = this.scale;
-    const panelY = height * 0.35;
+    const { fontSize, isMobile, pickerCols } = this.rc;
+    const panelY = isMobile ? height * 0.2 : height * 0.35;
     const panelH = height - panelY;
 
     // Semi-transparent background overlay
@@ -656,17 +681,20 @@ export class TossPaperScene extends Phaser.Scene {
 
     // Title
     const title = this.add.text(width / 2, panelY + 8, 'Place something for the next player', {
-      fontSize: '14px',
+      fontSize: `${fontSize.title}px`,
       fontFamily: 'Georgia, serif',
       color: '#6B6B6B',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(301);
     this.pickerElements.push(title);
 
     // Search input (DOM overlay)
+    const searchPad = isMobile ? 40 : 160;
+    const searchW = isMobile ? width - 80 : 480;
     if (!this.searchInput) {
-      this.searchInput = createDOMInput(160, panelY + 32, 480, {
+      this.searchInput = createDOMInput(searchPad, panelY + 32, searchW, {
         placeholder: 'Search objects...',
         maxLength: 30,
+        fontSize: isMobile ? `${14 * this.rc.uiScale}px` : undefined,
       });
       this.searchInput.addEventListener('input', () => {
         this.showObjectPicker(this.searchInput?.value || '');
@@ -680,16 +708,17 @@ export class TossPaperScene extends Phaser.Scene {
     const comingSoon = filtered.filter(o => o.status === 'coming_soon');
     const sorted = [...available, ...comingSoon];
 
-    // Grid layout
-    const cols = 4;
-    const cellW = 100;
-    const cellH = 80;
+    // Grid layout — responsive
+    const cols = pickerCols;
+    const cellW = isMobile ? Math.floor(width / cols) : 100;
+    const cellH = isMobile ? 100 : 80;
     const gridStartX = (width - cols * cellW) / 2;
-    const gridStartY = panelY + 80;
+    const gridStartY = panelY + (isMobile ? 90 : 80);
+    const thumbSize = isMobile ? 52 : 40;
 
     if (sorted.length === 0) {
       const empty = this.add.text(width / 2, gridStartY + 40, 'No objects found', {
-        fontSize: '14px',
+        fontSize: `${fontSize.title}px`,
         fontFamily: 'Georgia, serif',
         color: '#AAAAAA',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(301);
@@ -702,26 +731,26 @@ export class TossPaperScene extends Phaser.Scene {
       const cx = gridStartX + col * cellW + cellW / 2;
       const cy = gridStartY + row * cellH;
 
-      if (cy + cellH > height) return; // off-screen
+      if (cy + cellH > height - 30) return; // off-screen, leave room for skip
 
       const isComingSoon = obj.status === 'coming_soon';
       const spriteKey = isComingSoon ? 'coming_soon' : obj.spriteKey;
 
       // Thumbnail sprite
       if (this.textures.exists(spriteKey)) {
-        const thumb = this.add.image(cx, cy + 12, spriteKey)
+        const thumb = this.add.image(cx, cy + 14, spriteKey)
           .setScrollFactor(0).setDepth(302);
-        // Scale to fit 40x40 box
         const tex = this.textures.get(spriteKey).getSourceImage();
-        const scale = Math.min(40 / tex.width, 40 / tex.height);
+        const scale = Math.min(thumbSize / tex.width, thumbSize / tex.height);
         thumb.setScale(scale);
         if (isComingSoon) thumb.setAlpha(0.4);
         this.pickerElements.push(thumb);
       }
 
       // Name label
-      const label = this.add.text(cx, cy + 38, obj.name, {
-        fontSize: '11px',
+      const nameFontSize = isMobile ? fontSize.bodySmall : 11;
+      const label = this.add.text(cx, cy + thumbSize - 2, obj.name, {
+        fontSize: `${nameFontSize}px`,
         fontFamily: 'Georgia, serif',
         color: isComingSoon ? '#BBBBBB' : '#1A1A1A',
       }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(302);
@@ -729,8 +758,9 @@ export class TossPaperScene extends Phaser.Scene {
 
       // "Coming Soon" sub-label
       if (isComingSoon) {
-        const soon = this.add.text(cx, cy + 52, 'Coming Soon', {
-          fontSize: '9px',
+        const soonFontSize = isMobile ? 11 : 9;
+        const soon = this.add.text(cx, cy + thumbSize + nameFontSize + 2, 'Coming Soon', {
+          fontSize: `${soonFontSize}px`,
           fontFamily: 'Georgia, serif',
           color: '#CCCCCC',
           fontStyle: 'italic',
@@ -739,7 +769,7 @@ export class TossPaperScene extends Phaser.Scene {
       }
 
       // Hit zone
-      const hitZone = this.add.zone(cx, cy + 20, cellW - 8, cellH - 4)
+      const hitZone = this.add.zone(cx, cy + cellH / 2, cellW - 4, cellH - 4)
         .setScrollFactor(0).setDepth(303).setInteractive({ useHandCursor: !isComingSoon });
 
       if (isComingSoon) {
@@ -750,7 +780,7 @@ export class TossPaperScene extends Phaser.Scene {
         // Hover highlight
         const highlight = this.add.graphics().setScrollFactor(0).setDepth(301).setAlpha(0);
         highlight.fillStyle(0x4992FF, 0.1);
-        highlight.fillRoundedRect(cx - cellW / 2 + 4, cy - 8, cellW - 8, cellH - 4, 6);
+        highlight.fillRoundedRect(cx - cellW / 2 + 4, cy - 4, cellW - 8, cellH - 4, 6);
         this.pickerElements.push(highlight);
 
         hitZone.on('pointerover', () => highlight.setAlpha(1));
@@ -763,8 +793,9 @@ export class TossPaperScene extends Phaser.Scene {
     });
 
     // Skip button
+    const skipFontSize = isMobile ? fontSize.button : 14;
     const skipBtn = this.add.text(width / 2, height - 20, 'Skip', {
-      fontSize: '14px',
+      fontSize: `${skipFontSize}px`,
       fontFamily: 'Georgia, serif',
       color: '#AAAAAA',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(302)
@@ -813,8 +844,9 @@ export class TossPaperScene extends Phaser.Scene {
 
   private showToast(message: string) {
     const { width } = this.scale;
+    const toastSize = this.rc.isMobile ? this.rc.fontSize.body : 14;
     const toast = this.add.text(width / 2, 20, message, {
-      fontSize: '14px',
+      fontSize: `${toastSize}px`,
       fontFamily: 'Georgia, serif',
       color: '#FFFFFF',
       backgroundColor: '#333333',

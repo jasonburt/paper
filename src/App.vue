@@ -1,7 +1,7 @@
 <template>
   <div class="h-dvh w-full flex flex-col bg-white">
-    <HeaderNav />
-    <div class="flex-1 min-h-0 w-full max-w-4xl mx-auto overflow-y-auto">
+    <HeaderNav v-if="currentPage !== 'game'" />
+    <div class="flex-1 min-h-0 w-full mx-auto overflow-y-auto" :class="currentPage !== 'game' ? 'max-w-4xl' : ''">
       <HomePage v-if="currentPage === 'home'" />
       <PaperCrewHub v-else-if="currentPage === 'paperCrew'" :key="currentPath" />
       <CreateCrew v-else-if="currentPage === 'createCrew'" />
