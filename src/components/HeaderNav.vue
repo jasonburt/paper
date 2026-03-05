@@ -30,6 +30,7 @@ import { pushRoute } from '../router';
 
 const navLinks = [
   { label: 'Toss Paper', path: '/toss-paper', scene: 'TossPaperScene' },
+  { label: 'Origami Trail', path: '/origami-trail', scene: 'OrigamiTrailScene' },
   { label: 'Paper Crew', path: '/paper-crew', scene: 'PaperCrewScene' },
 ];
 

@@ -3,6 +3,7 @@ import { pushRoute } from '../router';
 
 const ROUTE_MAP: Record<string, string> = {
   TossPaperScene: '/toss-paper/single',
+  OrigamiTrailScene: '/origami-trail',
   PaperCrewScene: '/paper-crew',
 };
 

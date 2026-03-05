@@ -13,6 +13,7 @@ import { PaperCrewScene } from '../scenes/PaperCrewScene';
 import { CreateCrewScene } from '../scenes/CreateCrewScene';
 import { JoinCrewScene } from '../scenes/JoinCrewScene';
 import { CrewDetailScene } from '../scenes/CrewDetailScene';
+import { OrigamiTrailScene } from '../scenes/OrigamiTrailScene';
 
 const containerRef = ref<HTMLDivElement>();
 let game: Phaser.Game | null = null;
@@ -37,6 +38,7 @@ onMounted(() => {
       CreateCrewScene,
       JoinCrewScene,
       CrewDetailScene,
+      OrigamiTrailScene,
     ],
     physics: {
       default: 'arcade',

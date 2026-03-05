@@ -103,18 +103,22 @@ export class CrewDetailScene extends Phaser.Scene {
     divider.lineStyle(1, 0xD0D0D0, 0.6);
     divider.lineBetween(40, membersBottom, width - 40, membersBottom);
 
-    // Leaderboard
-    this.add.text(40, membersBottom + 8, 'Leaderboard — Toss Paper', {
-      fontSize: '16px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
+    // Leaderboards side by side
+    this.add.text(40, membersBottom + 8, 'Toss Paper', {
+      fontSize: '14px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
     });
+    this.loadLeaderboard('toss-paper', membersBottom + 28, 40);
 
-    this.loadLeaderboard('toss-paper', membersBottom + 30);
+    this.add.text(420, membersBottom + 8, 'Origami Trail', {
+      fontSize: '14px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
+    });
+    this.loadLeaderboard('origami-trail', membersBottom + 28, 420);
 
     // Play buttons
-    const playY = Math.max(380, height - 140);
+    const playY = Math.max(400, height - 120);
 
-    const playToss = this.add.text(width / 2, playY, '[ Play Toss Paper ]', {
-      fontSize: '24px',
+    const playToss = this.add.text(width / 2 - 120, playY, '[ Toss Paper ]', {
+      fontSize: '20px',
       fontFamily: 'Georgia, serif',
       color: '#FF4F36',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -130,8 +134,25 @@ export class CrewDetailScene extends Phaser.Scene {
       });
     });
 
+    const playTrail = this.add.text(width / 2 + 120, playY, '[ Origami Trail ]', {
+      fontSize: '20px',
+      fontFamily: 'Georgia, serif',
+      color: '#FF4F36',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    playTrail.on('pointerover', () => playTrail.setColor('#FF8F01'));
+    playTrail.on('pointerout', () => playTrail.setColor('#FF4F36'));
+    playTrail.on('pointerdown', () => {
+      const user = getUser();
+      pushRoute(`/origami-trail/multi/${this.crewId}`);
+      this.scene.start('OrigamiTrailScene', {
+        mode: 'multi',
+        crew_id: this.crewId,
+        user_id: user?.id,
+      });
+    });
+
     // Invite code display
-    this.add.text(width / 2, playY + 50, `Invite: ${this.crew.invite_code}`, {
+    this.add.text(width / 2, playY + 40, `Invite: ${this.crew.invite_code}`, {
       fontSize: '14px',
       fontFamily: 'monospace',
       color: '#6B6B6B',
@@ -140,33 +161,33 @@ export class CrewDetailScene extends Phaser.Scene {
     this.addBackButton();
   }
 
-  private async loadLeaderboard(game: string, startY: number) {
+  private async loadLeaderboard(game: string, startY: number, startX = 40) {
     try {
       const scores = await api.get<any[]>(`/scores/${game}?crew_id=${this.crewId}`);
       if (scores.length === 0) {
-        this.add.text(40, startY, 'No scores yet — be the first!', {
-          fontSize: '14px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
+        this.add.text(startX, startY, 'No scores yet', {
+          fontSize: '12px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
         });
       } else {
-        scores.slice(0, 8).forEach((s, i) => {
-          const y = startY + i * 22;
+        scores.slice(0, 5).forEach((s, i) => {
+          const y = startY + i * 20;
           const rank = `${i + 1}.`;
           const color = i === 0 ? '#FDE801' : i === 1 ? '#FF8F01' : i === 2 ? '#FF4F36' : '#1A1A1A';
 
-          this.add.text(50, y, rank, {
-            fontSize: '14px', fontFamily: 'monospace', color,
+          this.add.text(startX + 10, y, rank, {
+            fontSize: '12px', fontFamily: 'monospace', color,
           });
-          this.add.text(80, y, s.username, {
-            fontSize: '14px', fontFamily: 'monospace', color: '#1A1A1A',
+          this.add.text(startX + 36, y, s.username, {
+            fontSize: '12px', fontFamily: 'monospace', color: '#1A1A1A',
           });
-          this.add.text(300, y, `${s.score}`, {
-            fontSize: '14px', fontFamily: 'monospace', color: '#6B6B6B',
+          this.add.text(startX + 200, y, `${s.score}`, {
+            fontSize: '12px', fontFamily: 'monospace', color: '#6B6B6B',
           });
         });
       }
     } catch {
-      this.add.text(40, startY, 'Could not load scores', {
-        fontSize: '14px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
+      this.add.text(startX, startY, 'Could not load scores', {
+        fontSize: '12px', fontFamily: 'Georgia, serif', color: '#6B6B6B',
       });
     }
   }

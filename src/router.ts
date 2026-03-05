@@ -12,6 +12,12 @@ const routes: Array<{ pattern: RegExp; scene: string; extract?: (m: RegExpMatchA
   },
   // Legacy /toss-paper redirects to single
   { pattern: /^\/toss-paper$/, scene: 'TossPaperScene', extract: () => ({ mode: 'single' }) },
+  { pattern: /^\/origami-trail$/, scene: 'OrigamiTrailScene' },
+  {
+    pattern: /^\/origami-trail\/multi\/(\d+)$/,
+    scene: 'OrigamiTrailScene',
+    extract: (m) => ({ mode: 'multi', crew_id: parseInt(m[1], 10) }),
+  },
   { pattern: /^\/paper-crew$/, scene: 'PaperCrewScene' },
   { pattern: /^\/paper-crew\/create$/, scene: 'CreateCrewScene' },
   { pattern: /^\/paper-crew\/join$/, scene: 'JoinCrewScene' },
