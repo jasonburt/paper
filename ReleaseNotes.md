@@ -1,5 +1,22 @@
 # Release Notes
 
+## v0.4.0 — Vue Migration + Origami Trail (2026-03-04)
+
+### Added
+- **Origami Trail mini game** — duck-hunt style shooting game with wave system, combo scoring, and obstacle placement between waves
+- **Origami Trail multiplayer** — 3-wave crew mode with score posting and shared obstacles
+
+### Changed
+- **Migrated all UI pages from Phaser canvas to Vue + Tailwind CSS**
+  - Home page, Paper Crew hub, Create Crew, Join Crew, and Crew Room are now real HTML
+  - Selectable text, native clipboard, accessible forms, proper inputs
+  - Phaser canvas now only used for actual game scenes (Toss Paper, Origami Trail)
+- **App.vue handles all routing** — conditional rendering between Vue pages and Phaser GameCanvas
+- **HeaderNav simplified** — delegates all navigation through `pushRoute()` and App.vue
+- **PlayerIcon SVG component** — replaces Phaser `drawPlayerIcon()` with inline SVG for Vue pages
+
+---
+
 ## v0.3.1 — Multi-Mode + Player Identity (2026-03-02)
 
 ### Added

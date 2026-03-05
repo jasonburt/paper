@@ -447,7 +447,7 @@ export class PaperCrewScene extends Phaser.Scene {
         hitArea.setAlpha(0.001);
         hitArea.on('pointerdown', () => {
           pushRoute(`/paper-crew-room/${crew.id}`);
-          this.scene.start('CrewDetailScene', { crewId: crew.id });
+          this.scene.stop();
         });
       });
     }

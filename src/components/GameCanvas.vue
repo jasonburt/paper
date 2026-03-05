@@ -7,12 +7,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import Phaser from 'phaser';
 import { resolveRoute } from '../router';
 import { BootScene } from '../scenes/BootScene';
-import { MainMenuScene } from '../scenes/MainMenuScene';
 import { TossPaperScene } from '../scenes/TossPaperScene';
-import { PaperCrewScene } from '../scenes/PaperCrewScene';
-import { CreateCrewScene } from '../scenes/CreateCrewScene';
-import { JoinCrewScene } from '../scenes/JoinCrewScene';
-import { CrewDetailScene } from '../scenes/CrewDetailScene';
 import { OrigamiTrailScene } from '../scenes/OrigamiTrailScene';
 
 const containerRef = ref<HTMLDivElement>();
@@ -32,12 +27,7 @@ onMounted(() => {
     backgroundColor: '#FFFFFF',
     scene: [
       BootScene,
-      MainMenuScene,
       TossPaperScene,
-      PaperCrewScene,
-      CreateCrewScene,
-      JoinCrewScene,
-      CrewDetailScene,
       OrigamiTrailScene,
     ],
     physics: {
@@ -57,17 +47,9 @@ onMounted(() => {
   (window as any).__PAPER_GAME__ = game;
 });
 
-// Handle browser back/forward
-const onPopState = () => {
-  if (!game) return;
-  const route = resolveRoute();
-  game.scene.getScenes(true).forEach((s) => s.scene.stop());
-  game.scene.start(route.scene, route.data);
-};
-window.addEventListener('popstate', onPopState);
+// Navigation is handled by App.vue — no popstate handler needed here
 
 onUnmounted(() => {
-  window.removeEventListener('popstate', onPopState);
   if (game) {
     game.destroy(true);
     game = null;

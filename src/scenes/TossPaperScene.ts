@@ -94,7 +94,7 @@ export class TossPaperScene extends Phaser.Scene {
     this.setupInput();
 
     if (this.mode === 'multi') {
-      this.showColorPicker();
+      this.startMultiGame();
     } else {
       this.enterPreThrow();
     }
@@ -356,10 +356,10 @@ export class TossPaperScene extends Phaser.Scene {
       this.cameras.main.stopFollow();
       if (this.mode === 'multi' && this.crewId) {
         pushRoute(`/paper-crew-room/${this.crewId}`);
-        this.scene.start('CrewDetailScene', { crewId: this.crewId });
+        this.scene.stop();
       } else {
         pushRoute('/');
-        this.scene.start('MainMenuScene');
+        this.scene.stop();
       }
     });
   }
@@ -581,7 +581,7 @@ export class TossPaperScene extends Phaser.Scene {
 
       this.time.delayedCall(1200, () => {
         pushRoute(`/paper-crew-room/${this.crewId}`);
-        this.scene.start('CrewDetailScene', { crewId: this.crewId });
+        this.scene.stop();
       });
     } else {
       // Single mode: continue playing

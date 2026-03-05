@@ -149,7 +149,7 @@ export class CreateCrewScene extends Phaser.Scene {
     done.on('pointerout', () => done.setColor('#FF4F36'));
     done.on('pointerdown', () => {
       pushRoute(`/paper-crew-room/${crewId}`);
-      this.scene.start('CrewDetailScene', { crewId });
+      this.scene.stop();
     });
   }
 

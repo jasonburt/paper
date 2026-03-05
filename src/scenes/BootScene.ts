@@ -10,7 +10,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    const route = (window as any).__PAPER_ROUTE__ ?? { scene: 'MainMenuScene', data: {} };
-    this.scene.start(route.scene, route.data);
+    const route = (window as any).__PAPER_ROUTE__;
+    if (route) {
+      this.scene.start(route.scene, route.data);
+    }
+    // If no route (Vue page is active), do nothing — App.vue handles it
   }
 }

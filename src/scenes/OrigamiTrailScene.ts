@@ -83,7 +83,7 @@ export class OrigamiTrailScene extends Phaser.Scene {
     this.setupInput();
 
     if (this.mode === 'multi') {
-      this.showColorPicker();
+      this.startMultiGame();
     } else {
       this.startNextWave();
     }
@@ -263,10 +263,10 @@ export class OrigamiTrailScene extends Phaser.Scene {
     this.backText.on('pointerdown', () => {
       if (this.mode === 'multi' && this.crewId) {
         pushRoute(`/paper-crew-room/${this.crewId}`);
-        this.scene.start('CrewDetailScene', { crewId: this.crewId });
+        this.scene.stop();
       } else {
         pushRoute('/');
-        this.scene.start('MainMenuScene');
+        this.scene.stop();
       }
     });
   }
@@ -591,7 +591,7 @@ export class OrigamiTrailScene extends Phaser.Scene {
         this.backText.setVisible(false);
         this.time.delayedCall(1200, () => {
           pushRoute(`/paper-crew-room/${this.crewId}`);
-          this.scene.start('CrewDetailScene', { crewId: this.crewId });
+          this.scene.stop();
         });
         return;
       }

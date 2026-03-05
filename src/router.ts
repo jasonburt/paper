@@ -3,6 +3,8 @@ export interface RouteResult {
   data: Record<string, any>;
 }
 
+// Only game routes live here — UI pages (/, /paper-crew, /paper-crew-room/:id, etc.)
+// are handled by Vue components in App.vue
 const routes: Array<{ pattern: RegExp; scene: string; extract?: (m: RegExpMatchArray) => Record<string, any> }> = [
   { pattern: /^\/toss-paper\/single$/, scene: 'TossPaperScene', extract: () => ({ mode: 'single' }) },
   {
@@ -18,17 +20,9 @@ const routes: Array<{ pattern: RegExp; scene: string; extract?: (m: RegExpMatchA
     scene: 'OrigamiTrailScene',
     extract: (m) => ({ mode: 'multi', crew_id: parseInt(m[1], 10) }),
   },
-  { pattern: /^\/paper-crew$/, scene: 'PaperCrewScene' },
-  { pattern: /^\/paper-crew\/create$/, scene: 'CreateCrewScene' },
-  { pattern: /^\/paper-crew\/join$/, scene: 'JoinCrewScene' },
-  {
-    pattern: /^\/paper-crew-room\/(\d+)$/,
-    scene: 'CrewDetailScene',
-    extract: (m) => ({ crewId: parseInt(m[1], 10) }),
-  },
 ];
 
-export function resolveRoute(): RouteResult {
+export function resolveRoute(): RouteResult | null {
   const path = window.location.pathname;
   for (const route of routes) {
     const match = path.match(route.pattern);
@@ -36,9 +30,10 @@ export function resolveRoute(): RouteResult {
       return { scene: route.scene, data: route.extract ? route.extract(match) : {} };
     }
   }
-  return { scene: 'MainMenuScene', data: {} };
+  return null;
 }
 
 export function pushRoute(path: string) {
   window.history.pushState({}, '', path);
+  window.dispatchEvent(new CustomEvent('paper-navigate', { detail: { path } }));
 }

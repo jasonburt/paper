@@ -88,7 +88,7 @@ export class JoinCrewScene extends Phaser.Scene {
       const result = await api.post<any>('/crews/join', { invite_code: code, user_id: user.id });
       this.cleanup();
       pushRoute(`/paper-crew-room/${result.crew_id}`);
-      this.scene.start('CrewDetailScene', { crewId: result.crew_id });
+      this.scene.stop();
     } catch (e: any) {
       this.errorText.setText(e.message || 'Failed to join');
       submitBtn.setText('[ Join ]');
