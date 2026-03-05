@@ -8,6 +8,7 @@ Origami creatures run/fly across the screen and the player shoots them to score 
 - **Shooting**: Player clicks/taps to shoot at creatures
 - **Waves**: Increasingly difficult waves with faster/smaller creatures
 - **Environment**: Rocks, trees, and obstacles that creatures can hide behind
+- **Leave for next player** After the player completes their turn they can place an obstacle in the environment.
 
 ## Scoring
 - Points per creature hit (varies by difficulty of creature)

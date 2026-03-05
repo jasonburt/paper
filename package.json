@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && tsc -p server/tsconfig.json",
     "preview": "vite preview",
     "server": "tsx server/index.ts",
     "build:server": "tsc -p server/tsconfig.json",
