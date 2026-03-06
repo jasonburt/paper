@@ -12,3 +12,8 @@ Each game in the Paper collection has its own spec document describing mechanics
 - [Paper Crew](./paper_crew_spec.md) - Invite system, crews, and shared leaderboards
 - [Origami Scanner](./origami_scanner_spec.md) - Photo-to-sprite pipeline
 - [Placeable Objects](./placeable_objects_spec.md) - Searchable object catalog and placement system
+
+## Standards
+
+- [Mobile Standards](./mobile_standards_spec.md) - Mobile-first UI scaling, touch targets, and layout rules
+- [Desktop Standards](./desktop_standards_spec.md) - Default desktop layout, font sizes, and click targets

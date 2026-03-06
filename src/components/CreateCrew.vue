@@ -22,6 +22,7 @@
       >
         {{ submitting ? '...' : '[ Create ]' }}
       </button>
+      <p v-if="errorMsg" class="mt-4 text-sm text-red-500">{{ errorMsg }}</p>
       <div class="mt-8">
         <button
           class="text-sm text-[#6B6B6B] hover:text-[#FF8F01] transition-colors"
@@ -72,6 +73,7 @@ const submitting = ref(false);
 const created = ref(false);
 const createdCrew = ref({ id: 0, name: '', invite_code: '' });
 const codeCopied = ref(false);
+const errorMsg = ref('');
 const nameInputRef = ref<HTMLInputElement>();
 
 onMounted(() => {
@@ -81,16 +83,25 @@ onMounted(() => {
 async function handleCreate() {
   const name = crewName.value.trim();
   if (!name || submitting.value) return;
+  errorMsg.value = '';
   const user = getUser();
-  if (!user) return;
+  if (!user) {
+    errorMsg.value = 'Not signed in. Please go back and try again.';
+    return;
+  }
 
   submitting.value = true;
   try {
     const crew = await api.post<any>('/crews', { name, created_by: user.id });
     createdCrew.value = crew;
     created.value = true;
-  } catch {
-    // ignore
+  } catch (e: any) {
+    const msg = e?.error || e?.message || '';
+    if (msg.includes('User not found')) {
+      errorMsg.value = 'Your session expired. Please go back and rejoin.';
+    } else {
+      errorMsg.value = msg || 'Failed to create crew. Please try again.';
+    }
   } finally {
     submitting.value = false;
   }

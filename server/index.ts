@@ -56,12 +56,38 @@ app.patch('/api/users/:id', (req, res) => {
 
 app.post('/api/crews', (req, res) => {
   const { name, created_by } = req.body;
-  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-  const stmt = db.prepare('INSERT INTO crews (name, invite_code, created_by) VALUES (?, ?, ?)');
-  const result = stmt.run(name, code, created_by);
-  // Also add creator as a member
-  db.prepare('INSERT OR IGNORE INTO crew_members (crew_id, user_id) VALUES (?, ?)').run(result.lastInsertRowid, created_by);
-  res.json({ id: result.lastInsertRowid, name, invite_code: code });
+  if (!name || !String(name).trim()) {
+    res.status(400).json({ error: 'Crew name is required' });
+    return;
+  }
+  if (!created_by) {
+    res.status(400).json({ error: 'User ID is required' });
+    return;
+  }
+  // Verify user exists
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(created_by);
+  if (!user) {
+    res.status(400).json({ error: 'User not found. Please refresh and try again.' });
+    return;
+  }
+  // Generate a 6-char invite code with collision retry
+  let code = '';
+  let attempts = 0;
+  while (attempts < 5) {
+    code = Math.random().toString(36).substring(2, 8).padEnd(6, '0').substring(0, 6).toUpperCase();
+    const existing = db.prepare('SELECT id FROM crews WHERE invite_code = ?').get(code);
+    if (!existing) break;
+    attempts++;
+  }
+  try {
+    const stmt = db.prepare('INSERT INTO crews (name, invite_code, created_by) VALUES (?, ?, ?)');
+    const result = stmt.run(String(name).trim(), code, created_by);
+    // Also add creator as a member
+    db.prepare('INSERT OR IGNORE INTO crew_members (crew_id, user_id) VALUES (?, ?)').run(result.lastInsertRowid, created_by);
+    res.json({ id: result.lastInsertRowid, name: String(name).trim(), invite_code: code });
+  } catch (e: any) {
+    res.status(500).json({ error: 'Failed to create crew. Please try again.' });
+  }
 });
 
 app.post('/api/crews/join', (req, res) => {

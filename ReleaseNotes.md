@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.4.1 — Create Crew Fix + Placeable Objects (2026-03-05)
+
+### Fixed
+- **Create Crew crashes in production** — stale user IDs from localStorage caused an unhandled FOREIGN KEY error on the server, returning a 500 with no feedback to the user; added server-side validation, user existence check, and invite code collision retry
+- **Silent error swallowing on Create Crew form** — replaced `catch { // ignore }` with proper error display so users see actionable messages like "Your session expired"
+- **Invite codes could be shorter than 6 characters** — `Math.random().toString(36)` can produce short strings; codes are now padded and trimmed to exactly 6 chars
+
+---
+
 ## v0.4.0 — Vue Migration + Origami Trail (2026-03-04)
 
 ### Added
