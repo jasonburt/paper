@@ -1,6 +1,6 @@
 <template>
   <div class="h-dvh w-full flex flex-col bg-white">
-    <HeaderNav v-if="currentPage !== 'game'" />
+    <HeaderNav :gameBack="gameBackRoute" />
     <div class="flex-1 min-h-0 w-full mx-auto overflow-y-auto" :class="currentPage !== 'game' ? 'max-w-4xl' : ''">
       <HomePage v-if="currentPage === 'home'" />
       <PaperCrewHub v-else-if="currentPage === 'paperCrew'" :key="currentPath" />
@@ -44,6 +44,17 @@ const currentPage = computed<Page>(() => {
 
 const crewRoomMatch = computed(() => currentPath.value.match(/^\/paper-crew-room\/(\d+)$/));
 const crewId = computed(() => crewRoomMatch.value ? parseInt(crewRoomMatch.value[1], 10) : 0);
+
+// When in a game, provide back route info to the header nav
+const gameBackRoute = computed(() => {
+  if (currentPage.value !== 'game') return null;
+  const p = currentPath.value;
+  const multiMatch = p.match(/\/multi\/(\d+)$/);
+  if (multiMatch) {
+    return { label: '← Crew', route: `/paper-crew-room/${multiMatch[1]}` };
+  }
+  return { label: '← Back', route: '/' };
+});
 
 function updatePath() {
   currentPath.value = window.location.pathname;

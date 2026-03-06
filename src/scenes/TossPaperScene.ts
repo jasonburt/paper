@@ -11,8 +11,8 @@ type GameState = 'COLOR_PICK' | 'PRE_THROW' | 'DRAGGING' | 'FLYING' | 'LANDED' |
 const WORLD_WIDTH = 4000;
 const WORLD_HEIGHT = 600;
 const GROUND_Y = 480;
-const LAUNCH_X = 120;
-const LAUNCH_Y = 400;
+const LAUNCH_X = 180;
+const LAUNCH_Y = 350;
 const MAX_DRAG_DISTANCE = 160;
 const MAX_SPEED = 950;
 const GRAVITY = 200;
@@ -57,8 +57,9 @@ export class TossPaperScene extends Phaser.Scene {
   private powerText!: Phaser.GameObjects.Text;
   private stateHintText!: Phaser.GameObjects.Text;
 
-  // Back button
-  private backText!: Phaser.GameObjects.Text;
+  // Scroll buttons for obstacle placement
+  private scrollLeftBtn!: Phaser.GameObjects.Text;
+  private scrollRightBtn!: Phaser.GameObjects.Text;
 
   // Color picker elements (cleaned up after selection)
   private colorPickElements: Phaser.GameObjects.GameObject[] = [];
@@ -125,7 +126,8 @@ export class TossPaperScene extends Phaser.Scene {
     this.scoreText.setVisible(false);
     this.windText.setVisible(false);
     this.throwText.setVisible(false);
-    this.backText.setVisible(false);
+    this.scrollLeftBtn.setVisible(false);
+    this.scrollRightBtn.setVisible(false);
     this.plane.setVisible(false);
 
     const title = this.add.text(width / 2, height / 4, 'Choose Your Color', {
@@ -458,38 +460,48 @@ export class TossPaperScene extends Phaser.Scene {
       color: '#6B6B6B',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
 
-    // Back button — larger on mobile
-    const backFontSize = this.rc.isMobile ? fontSize.button : 14;
-    this.backText = this.add.text(padding.edge, height - 45 * this.rc.uiScale, '← Back', {
-      fontSize: `${backFontSize}px`,
-      fontFamily: 'Georgia, serif',
-      color: '#6B6B6B',
-    }).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
-    // Expand hit area for mobile
-    if (this.rc.isMobile) {
-      this.backText.setInteractive(
-        new Phaser.Geom.Rectangle(-10, -10, this.backText.width + 20, this.backText.height + 20),
-        Phaser.Geom.Rectangle.Contains
-      );
-    }
-    this.backText.on('pointerover', () => this.backText.setColor('#FF8F01'));
-    this.backText.on('pointerout', () => this.backText.setColor('#6B6B6B'));
-    this.backText.on('pointerdown', () => {
-      this.cameras.main.stopFollow();
-      if (this.mode === 'multi' && this.crewId) {
-        pushRoute(`/paper-crew-room/${this.crewId}`);
-        this.scene.stop();
-      } else {
-        pushRoute('/');
-        this.scene.stop();
-      }
-    });
+    // Scroll buttons for obstacle placement (hidden by default)
+    const btnSize = this.rc.isMobile ? fontSize.button : 20;
+    const btnY = height * 0.5;
+
+    this.scrollLeftBtn = this.add.text(padding.edge, btnY, '◀', {
+      fontSize: `${btnSize}px`,
+      fontFamily: 'monospace',
+      color: '#4992FF',
+      backgroundColor: '#F0F0F0',
+      padding: { x: 10, y: 8 },
+    }).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true }).setVisible(false);
+
+    this.scrollRightBtn = this.add.text(width - padding.edge, btnY, '▶', {
+      fontSize: `${btnSize}px`,
+      fontFamily: 'monospace',
+      color: '#4992FF',
+      backgroundColor: '#F0F0F0',
+      padding: { x: 10, y: 8 },
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true }).setVisible(false);
+
+    this.scrollLeftBtn.on('pointerdown', () => this.scrollField(-300));
+    this.scrollRightBtn.on('pointerdown', () => this.scrollField(300));
   }
 
   private setupInput() {
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
     this.input.on('pointerup', this.onPointerUp, this);
+    // Fix: release drag when pointer leaves the canvas (prevents stuck drag state on mobile)
+    this.input.on('pointerupoutside', this.onPointerUp, this);
+    this.input.on('gameout', this.onPointerUp, this);
+  }
+
+  private scrollField(dx: number) {
+    const cam = this.cameras.main;
+    const targetX = Phaser.Math.Clamp(cam.scrollX + dx, 0, WORLD_WIDTH - this.scale.width);
+    this.tweens.add({
+      targets: cam,
+      scrollX: targetX,
+      duration: 300,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   // --- State transitions ---
@@ -528,7 +540,8 @@ export class TossPaperScene extends Phaser.Scene {
     this.distanceText.setVisible(false);
     this.powerText.setVisible(false);
     this.stateHintText.setText('Drag the plane to throw');
-    this.backText.setVisible(true);
+    this.scrollLeftBtn.setVisible(false);
+    this.scrollRightBtn.setVisible(false);
 
     // Clear preview graphics
     this.previewGraphics.clear();
@@ -573,7 +586,6 @@ export class TossPaperScene extends Phaser.Scene {
     this.powerText.setVisible(false);
     this.distanceText.setVisible(true);
     this.stateHintText.setText('');
-    this.backText.setVisible(false);
   }
 
   private triggerLanded() {
@@ -639,7 +651,8 @@ export class TossPaperScene extends Phaser.Scene {
     });
 
     this.distanceText.setVisible(false);
-    this.backText.setVisible(false);
+    this.scrollLeftBtn.setVisible(false);
+    this.scrollRightBtn.setVisible(false);
     this.stateHintText.setText('');
 
     // Show object picker after camera scrolls back
@@ -838,7 +851,8 @@ export class TossPaperScene extends Phaser.Scene {
     this.ghostObstacle.setDepth(50);
 
     this.stateHintText.setText(`Click to place: ${obj.name}`);
-    this.backText.setVisible(true);
+    this.scrollLeftBtn.setVisible(true);
+    this.scrollRightBtn.setVisible(true);
     this.distanceText.setVisible(false);
   }
 
@@ -908,7 +922,8 @@ export class TossPaperScene extends Phaser.Scene {
       }).catch(() => {}); // fire and forget
 
       this.stateHintText.setText('Obstacle placed! Returning...');
-      this.backText.setVisible(false);
+      this.scrollLeftBtn.setVisible(false);
+      this.scrollRightBtn.setVisible(false);
 
       this.time.delayedCall(1200, () => {
         pushRoute(`/paper-crew-room/${this.crewId}`);
