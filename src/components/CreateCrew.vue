@@ -71,7 +71,7 @@ import { getUser } from '../utils/user';
 const crewName = ref('');
 const submitting = ref(false);
 const created = ref(false);
-const createdCrew = ref({ id: 0, name: '', invite_code: '' });
+const createdCrew = ref({ id: '', name: '', invite_code: '' });
 const codeCopied = ref(false);
 const errorMsg = ref('');
 const nameInputRef = ref<HTMLInputElement>();
@@ -86,7 +86,7 @@ async function handleCreate() {
   errorMsg.value = '';
   const user = getUser();
   if (!user) {
-    errorMsg.value = 'Not signed in. Please go back and try again.';
+    pushRoute('/login');
     return;
   }
 

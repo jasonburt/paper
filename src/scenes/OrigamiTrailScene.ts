@@ -21,7 +21,7 @@ const SPAWN_MARGIN = 60; // vertical margin from top/ground
 export class OrigamiTrailScene extends Phaser.Scene {
   // Mode
   private mode: 'single' | 'multi' = 'single';
-  private crewId: number | null = null;
+  private crewId: string | null = null;
   private userId: number | null = null;
   private playerColor = '#FF4F36';
 

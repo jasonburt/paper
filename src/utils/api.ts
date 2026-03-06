@@ -1,10 +1,10 @@
 const BASE = '/api';
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const opts: RequestInit = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = localStorage.getItem('paper_token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const opts: RequestInit = { method, headers };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${BASE}${path}`, opts);
   if (!res.ok) {

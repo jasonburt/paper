@@ -58,7 +58,10 @@ async function handleJoin() {
     return;
   }
   const user = getUser();
-  if (!user) return;
+  if (!user) {
+    pushRoute('/login');
+    return;
+  }
 
   submitting.value = true;
   error.value = '';

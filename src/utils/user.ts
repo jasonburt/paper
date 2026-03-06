@@ -4,6 +4,7 @@ const STORAGE_KEY = 'paper_user';
 const COLOR_KEY = 'paper_color';
 const ICON_KEY = 'paper_icon';
 const PROFILE_SET_KEY = 'paper_profile_set';
+const TOKEN_KEY = 'paper_token';
 
 // Origami-inspired player colors
 export const PLAYER_COLORS = [
@@ -28,6 +29,7 @@ export const PLAYER_ICONS = [
 export interface PaperUser {
   id: number;
   username: string;
+  email: string;
   icon?: string;
   color?: string;
 }
@@ -46,14 +48,34 @@ export function saveUserLocal(user: PaperUser) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
 }
 
-export async function createUser(username: string): Promise<PaperUser> {
-  const user = await api.post<PaperUser>('/users', { username });
+export async function createUser(username: string, email: string): Promise<PaperUser> {
+  const resp = await api.post<PaperUser & { token: string }>('/users', { username, email });
+  if (resp.token) saveToken(resp.token);
+  const user: PaperUser = { id: resp.id, username: resp.username, email: resp.email, icon: resp.icon, color: resp.color };
   saveUserLocal(user);
   return user;
 }
 
-export async function updateUserProfile(userId: number, icon: string, color: string): Promise<PaperUser> {
-  const user = await api.patch<PaperUser>(`/users/${userId}`, { icon, color });
+/** Validate that the localStorage user still exists in the DB. Returns user or null. */
+export async function validateSession(): Promise<PaperUser | null> {
+  const local = getUser();
+  if (!local?.email) return null;
+  try {
+    const resp = await api.get<PaperUser & { token: string }>(`/users/me?email=${encodeURIComponent(local.email)}`);
+    if (resp.token) saveToken(resp.token);
+    const user: PaperUser = { id: resp.id, username: resp.username, email: resp.email, icon: resp.icon, color: resp.color };
+    saveUserLocal(user);
+    return user;
+  } catch {
+    clearUser();
+    return null;
+  }
+}
+
+export async function updateUserProfile(userId: number, icon: string, color: string, username?: string): Promise<PaperUser> {
+  const body: Record<string, string> = { icon, color };
+  if (username) body.username = username;
+  const user = await api.patch<PaperUser>(`/users/${userId}`, body);
   // Merge with existing local data
   const existing = getUser();
   const merged = { ...existing, ...user };
@@ -67,6 +89,18 @@ export async function updateUserProfile(userId: number, icon: string, color: str
 
 export function clearUser() {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(COLOR_KEY);
+  localStorage.removeItem(ICON_KEY);
+  localStorage.removeItem(PROFILE_SET_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function saveToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
 }
 
 export function getPlayerColor(): string {

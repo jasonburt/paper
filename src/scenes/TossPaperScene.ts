@@ -22,7 +22,7 @@ const MAX_OBSTACLES = 20;
 export class TossPaperScene extends Phaser.Scene {
   // Mode: 'single' = solo practice, 'multi' = crew multiplayer
   private mode: 'single' | 'multi' = 'single';
-  private crewId: number | null = null;
+  private crewId: string | null = null;
   private userId: number | null = null;
   private playerColor = '#FF4F36';
 

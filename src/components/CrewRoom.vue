@@ -106,7 +106,7 @@ import PlayerIcon from './PlayerIcon.vue';
 import Leaderboard from './Leaderboard.vue';
 
 interface CrewData {
-  id: number;
+  id: string;
   name: string;
   invite_code: string;
   members: Array<{ id: number; username: string; icon?: string; color?: string }>;
@@ -119,7 +119,7 @@ interface ScoreEntry {
 }
 
 const props = defineProps<{
-  crewId: number;
+  crewId: string;
 }>();
 
 const emit = defineEmits<{

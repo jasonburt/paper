@@ -8,17 +8,17 @@ export interface RouteResult {
 const routes: Array<{ pattern: RegExp; scene: string; extract?: (m: RegExpMatchArray) => Record<string, any> }> = [
   { pattern: /^\/toss-paper\/single$/, scene: 'TossPaperScene', extract: () => ({ mode: 'single' }) },
   {
-    pattern: /^\/toss-paper\/multi\/(\d+)$/,
+    pattern: /^\/toss-paper\/multi\/([a-f0-9]+)$/,
     scene: 'TossPaperScene',
-    extract: (m) => ({ mode: 'multi', crew_id: parseInt(m[1], 10) }),
+    extract: (m) => ({ mode: 'multi', crew_id: m[1] }),
   },
   // Legacy /toss-paper redirects to single
   { pattern: /^\/toss-paper$/, scene: 'TossPaperScene', extract: () => ({ mode: 'single' }) },
   { pattern: /^\/origami-trail$/, scene: 'OrigamiTrailScene' },
   {
-    pattern: /^\/origami-trail\/multi\/(\d+)$/,
+    pattern: /^\/origami-trail\/multi\/([a-f0-9]+)$/,
     scene: 'OrigamiTrailScene',
-    extract: (m) => ({ mode: 'multi', crew_id: parseInt(m[1], 10) }),
+    extract: (m) => ({ mode: 'multi', crew_id: m[1] }),
   },
 ];
 

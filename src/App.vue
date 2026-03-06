@@ -3,6 +3,7 @@
     <HeaderNav :gameBack="gameBackRoute" />
     <div class="flex-1 min-h-0 w-full mx-auto overflow-y-auto" :class="currentPage !== 'game' ? 'max-w-4xl' : ''">
       <HomePage v-if="currentPage === 'home'" />
+      <LoginPage v-else-if="currentPage === 'login'" />
       <PaperCrewHub v-else-if="currentPage === 'paperCrew'" :key="currentPath" />
       <CreateCrew v-else-if="currentPage === 'createCrew'" />
       <JoinCrew v-else-if="currentPage === 'joinCrew'" />
@@ -23,6 +24,7 @@ import { resolveRoute } from './router';
 import HeaderNav from './components/HeaderNav.vue';
 import GameCanvas from './components/GameCanvas.vue';
 import HomePage from './components/HomePage.vue';
+import LoginPage from './components/LoginPage.vue';
 import PaperCrewHub from './components/PaperCrewHub.vue';
 import CreateCrew from './components/CreateCrew.vue';
 import JoinCrew from './components/JoinCrew.vue';
@@ -30,26 +32,27 @@ import CrewRoom from './components/CrewRoom.vue';
 
 const currentPath = ref(window.location.pathname);
 
-type Page = 'home' | 'paperCrew' | 'createCrew' | 'joinCrew' | 'crewRoom' | 'game';
+type Page = 'home' | 'login' | 'paperCrew' | 'createCrew' | 'joinCrew' | 'crewRoom' | 'game';
 
 const currentPage = computed<Page>(() => {
   const p = currentPath.value;
   if (p === '/') return 'home';
+  if (p === '/login') return 'login';
   if (p === '/paper-crew') return 'paperCrew';
   if (p === '/paper-crew/create') return 'createCrew';
   if (p === '/paper-crew/join') return 'joinCrew';
-  if (/^\/paper-crew-room\/\d+$/.test(p)) return 'crewRoom';
+  if (/^\/paper-crew-room\/[a-f0-9]+$/.test(p)) return 'crewRoom';
   return 'game';
 });
 
-const crewRoomMatch = computed(() => currentPath.value.match(/^\/paper-crew-room\/(\d+)$/));
-const crewId = computed(() => crewRoomMatch.value ? parseInt(crewRoomMatch.value[1], 10) : 0);
+const crewRoomMatch = computed(() => currentPath.value.match(/^\/paper-crew-room\/([a-f0-9]+)$/));
+const crewId = computed(() => crewRoomMatch.value ? crewRoomMatch.value[1] : '');
 
 // When in a game, provide back route info to the header nav
 const gameBackRoute = computed(() => {
   if (currentPage.value !== 'game') return null;
   const p = currentPath.value;
-  const multiMatch = p.match(/\/multi\/(\d+)$/);
+  const multiMatch = p.match(/\/multi\/([a-f0-9]+)$/);
   if (multiMatch) {
     return { label: '← Crew', route: `/paper-crew-room/${multiMatch[1]}` };
   }

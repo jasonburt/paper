@@ -1,5 +1,30 @@
 # Release Notes
 
+## v0.5.0 — Login, Logout & User Settings (2026-03-06)
+
+### Added
+- **Email-based login** — new `/login` page; enter email to sign in or sign up with a username
+- **Logout** — log out button on the crew hub clears session and returns home
+- **Session tokens** — lightweight auth prevents user impersonation; all mutating API endpoints require a valid token
+- **Session validation** — detects stale localStorage after production DB resets and redirects to login instead of crashing
+- **UUID crew IDs** — crew URLs now use 12-char hex IDs instead of auto-increment integers (e.g. `/paper-crew-room/a1b2c3d4e5f6`)
+- **User settings** — edit your username and view your email from the profile settings (⚙ gear icon)
+- **Username uniqueness** — server rejects duplicate usernames with a clear error message
+
+### Fixed
+- **"Session expired" errors** — the root cause: ephemeral production DB resets left stale localStorage IDs causing FOREIGN KEY crashes; now handled gracefully via email-based session recovery
+
+---
+
+## v0.4.2 — Toss Paper Mobile-Friendly (2026-03-06)
+
+### Improved
+- **Nav visible during gameplay** — moved the back button out of the Phaser canvas and into the HeaderNav so it's always accessible and touch-friendly
+- **Off-screen drag fix** — dragging the plane off the edge of the screen no longer leaves it stuck; `pointerupoutside` and `gameout` events now trigger launch correctly
+- **Scroll buttons for obstacle placement** — ◀ ▶ buttons let mobile users pan across the full 4000px launch field when placing obstacles
+
+---
+
 ## v0.4.1 — Create Crew Fix + Placeable Objects (2026-03-05)
 
 ### Fixed

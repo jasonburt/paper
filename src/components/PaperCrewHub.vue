@@ -1,39 +1,7 @@
 <template>
   <div class="w-full max-w-2xl mx-auto px-4 py-6 font-serif">
-    <!-- Step 1: Username prompt -->
-    <div v-if="step === 'username'" class="text-center py-12">
-      <h1 class="text-3xl text-[#1A1A1A] mb-4">Choose a Username</h1>
-      <p class="text-base text-[#6B6B6B] mb-8">This is how others will see you</p>
-      <div class="flex justify-center mb-6">
-        <input
-          ref="usernameInputRef"
-          v-model="username"
-          type="text"
-          maxlength="20"
-          placeholder="Your name..."
-          class="w-60 px-3 py-2 border-2 border-[#D0D0D0] rounded bg-[#FAFAFA] text-[#1A1A1A] font-serif outline-none focus:border-[#4992FF] text-base"
-          @keydown.enter="submitUsername"
-        />
-      </div>
-      <button
-        class="text-2xl text-[#4992FF] hover:text-[#FF8F01] transition-colors"
-        :disabled="submitting"
-        @click="submitUsername"
-      >
-        {{ submitting ? '...' : '[ Go ]' }}
-      </button>
-      <div class="mt-8">
-        <button
-          class="text-sm text-[#6B6B6B] hover:text-[#FF8F01] transition-colors"
-          @click="goHome"
-        >
-          ← Back
-        </button>
-      </div>
-    </div>
-
-    <!-- Step 2: Profile picker -->
-    <div v-else-if="step === 'profile'" class="text-center py-4">
+    <!-- Step 1: Profile picker -->
+    <div v-if="step === 'profile'" class="text-center py-4">
       <h1 class="text-[28px] text-[#1A1A1A] mb-1">Welcome, {{ currentUser?.username }}!</h1>
       <p class="text-sm text-[#6B6B6B] mb-4">Pick your icon and color</p>
 
@@ -44,6 +12,22 @@
         </div>
       </div>
       <p class="text-xs font-mono text-[#6B6B6B] mb-4">{{ selectedIconLabel }}</p>
+
+      <!-- Username -->
+      <p class="text-base text-[#1A1A1A] mb-2">Name</p>
+      <div class="flex justify-center mb-1">
+        <input
+          v-model="editedUsername"
+          type="text"
+          maxlength="20"
+          placeholder="Your username"
+          class="w-60 px-3 py-2 border-2 border-[#D0D0D0] rounded bg-[#FAFAFA] text-[#1A1A1A] font-serif text-center outline-none focus:border-[#4992FF] text-base"
+        />
+      </div>
+      <p v-if="usernameError" class="text-sm text-[#FF4F36] mb-3">{{ usernameError }}</p>
+
+      <!-- Email (read-only) -->
+      <p v-if="currentUser?.email" class="text-xs font-mono text-[#B0A898] mb-6">{{ currentUser.email }}</p>
 
       <!-- Icon grid -->
       <p class="text-base text-[#1A1A1A] mb-3">Icon</p>
@@ -107,7 +91,7 @@
       </div>
     </div>
 
-    <!-- Step 3: Crew hub -->
+    <!-- Step 2: Crew hub -->
     <div v-else-if="step === 'hub'">
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
@@ -124,6 +108,12 @@
             @click="editProfile"
           >
             ⚙
+          </button>
+          <button
+            class="text-xs text-[#B0A898] hover:text-[#FF4F36] transition-colors ml-1"
+            @click="handleLogout"
+          >
+            Log out
           </button>
         </div>
       </div>
@@ -186,28 +176,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { pushRoute } from '../router';
 import { api } from '../utils/api';
 import {
-  getUser, createUser, updateUserProfile,
-  getPlayerColor, getPlayerIcon,
-  isProfileSet,
+  getUser, updateUserProfile, validateSession, clearUser,
+  getPlayerColor, getPlayerIcon, setPlayerColor, setPlayerIcon,
+  isProfileSet, setProfileSet,
   PLAYER_COLORS, PLAYER_ICONS,
 } from '../utils/user';
 import PlayerIcon from './PlayerIcon.vue';
 
-type Step = 'username' | 'profile' | 'hub';
+type Step = 'profile' | 'hub';
 
-const step = ref<Step>('username');
+const step = ref<Step>('profile');
 const currentUser = ref(getUser());
-const username = ref('');
-const submitting = ref(false);
 const saving = ref(false);
 
 // Profile picker state
 const selectedIcon = ref(getPlayerIcon());
 const selectedColor = ref(getPlayerColor());
+const editedUsername = ref(currentUser.value?.username || '');
+const usernameError = ref('');
 const selectedIconLabel = computed(
   () => PLAYER_ICONS.find(i => i.key === selectedIcon.value)?.label || selectedIcon.value,
 );
@@ -219,53 +209,66 @@ const playerColor = ref(getPlayerColor());
 const crews = ref<any[]>([]);
 const loadingCrews = ref(true);
 
-const usernameInputRef = ref<HTMLInputElement>();
-
 onMounted(async () => {
   const user = getUser();
   if (!user) {
-    step.value = 'username';
-    nextTick(() => usernameInputRef.value?.focus());
+    pushRoute('/login');
     return;
   }
-  currentUser.value = user;
 
-  if (!isProfileSet()) {
+  // Validate session against DB (handles ephemeral DB reset)
+  const validUser = await validateSession();
+  if (!validUser) {
+    pushRoute('/login');
+    return;
+  }
+  currentUser.value = validUser;
+
+  // If the server already has a non-default icon/color, the user has profiled before
+  const hasProfile = isProfileSet() || (validUser.icon && validUser.icon !== 'plane') || (validUser.color && validUser.color !== '#FF4F36');
+  if (!hasProfile) {
     step.value = 'profile';
     return;
+  }
+
+  // Restore profile flags from server data
+  if (!isProfileSet() && validUser.icon) {
+    setPlayerColor(validUser.color || '#FF4F36');
+    setPlayerIcon(validUser.icon || 'plane');
+    setProfileSet(true);
+    playerIcon.value = validUser.icon || 'plane';
+    playerColor.value = validUser.color || '#FF4F36';
   }
 
   step.value = 'hub';
-  await loadCrews(user.id);
+  await loadCrews(validUser.id);
 });
 
-async function submitUsername() {
-  const name = username.value.trim();
-  if (!name || submitting.value) return;
-  submitting.value = true;
-  try {
-    const user = await createUser(name);
-    currentUser.value = user;
-    step.value = 'profile';
-  } catch {
-    // ignore
-  } finally {
-    submitting.value = false;
-  }
+function handleLogout() {
+  clearUser();
+  pushRoute('/');
 }
 
 async function saveProfile() {
   if (!currentUser.value || saving.value) return;
+  const cleanName = editedUsername.value.trim();
+  if (!cleanName) {
+    usernameError.value = 'Username cannot be empty';
+    return;
+  }
+  usernameError.value = '';
   saving.value = true;
   try {
-    await updateUserProfile(currentUser.value.id, selectedIcon.value, selectedColor.value);
+    await updateUserProfile(currentUser.value.id, selectedIcon.value, selectedColor.value, cleanName);
     currentUser.value = getUser();
     playerIcon.value = getPlayerIcon();
     playerColor.value = getPlayerColor();
     step.value = 'hub';
     await loadCrews(currentUser.value!.id);
-  } catch {
-    // ignore
+  } catch (e: any) {
+    if (e.message?.includes('already taken')) {
+      usernameError.value = 'Username already taken';
+    }
   } finally {
     saving.value = false;
   }
@@ -273,7 +276,8 @@ async function saveProfile() {
 
 async function skipProfile() {
   if (!currentUser.value) return;
-  await updateUserProfile(currentUser.value.id, selectedIcon.value, selectedColor.value).catch(() => {});
+  const cleanName = editedUsername.value.trim() || currentUser.value.username;
+  await updateUserProfile(currentUser.value.id, selectedIcon.value, selectedColor.value, cleanName).catch(() => {});
   currentUser.value = getUser();
   playerIcon.value = getPlayerIcon();
   playerColor.value = getPlayerColor();
@@ -285,6 +289,8 @@ function editProfile() {
   if (!currentUser.value) return;
   selectedIcon.value = currentUser.value.icon || getPlayerIcon();
   selectedColor.value = currentUser.value.color || getPlayerColor();
+  editedUsername.value = currentUser.value.username;
+  usernameError.value = '';
   step.value = 'profile';
 }
 
@@ -299,7 +305,7 @@ async function loadCrews(userId: number) {
   }
 }
 
-function goToCrewRoom(crewId: number) {
+function goToCrewRoom(crewId: string) {
   pushRoute(`/paper-crew-room/${crewId}`);
 }
 
