@@ -12,7 +12,8 @@
     "build:server": "tsc -p server/tsconfig.json",
     "build:all": "npm run build && npm run build:server",
     "start": "NODE_ENV=production node dist-server/index.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run server\""
+    "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
+    "test": "./scripts/test-api.sh"
   },
   "keywords": [
     "phaser",

@@ -36,6 +36,21 @@ npm run server     # Express API on :3011
 
 The Vite dev server proxies `/api` requests to the Express backend.
 
+**Note:** The backend does not hot-reload. Use `npx tsx watch server/index.ts` instead of `npm run server` for auto-restart during development.
+
+## Testing
+
+```bash
+npm test           # Runs API smoke tests (requires backend on :3011)
+```
+
+The smoke test (`scripts/test-api.sh`) exercises the full API lifecycle: signup, login, session validation, profile updates, crew CRUD, scores, auth enforcement, and error handling. Run it after any backend change to catch regressions quickly.
+
+You can also verify the backend is running your latest code:
+```bash
+curl http://localhost:3011/api/health   # Check the "booted" timestamp
+```
+
 ## Build & Production
 
 ```bash
@@ -55,7 +70,10 @@ paper/
 ├── server/
 │   ├── index.ts       # Express API (users, crews, scores, obstacles)
 │   └── db.ts          # SQLite schema and migrations
+├── scripts/
+│   └── test-api.sh    # API smoke tests (23 checks)
 ├── specs/             # Game and system specs
+├── CLAUDE.md          # Claude Code project conventions
 ├── Design.md          # Color palette, typography, layout rules
 ├── ReleaseNotes.md    # Version history
 └── DEPLOYMENT.md      # Cloud Run deployment guide
@@ -71,3 +89,4 @@ White paper aesthetic with color from origami — Star Yellow, Petal Orange, Gif
 - [Deployment Guide](./DEPLOYMENT.md)
 - [Design System](./Design.md)
 - [Game Specs](./specs/README.md)
+- [Claude Code Conventions](./CLAUDE.md)

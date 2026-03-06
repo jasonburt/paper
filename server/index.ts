@@ -36,8 +36,9 @@ function authenticateRequest(req: express.Request): { id: number; username: stri
 }
 
 // Health check
+const BOOT_TIME = new Date().toISOString();
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', name: 'Paper API' });
+  res.json({ status: 'ok', name: 'Paper API', booted: BOOT_TIME });
 });
 
 // Users
