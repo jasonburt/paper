@@ -27,6 +27,7 @@ const menuItems = [
   { label: 'Toss Paper', path: '/toss-paper/single', color: '#FDE801' },
   { label: 'Origami Trail', path: '/origami-trail', color: '#FF4F36' },
   { label: 'Paper Crew', path: '/paper-crew', color: '#4992FF' },
+  { label: 'About', path: '/about', color: '#B0A898' },
 ];
 
 function navigate(path: string) {

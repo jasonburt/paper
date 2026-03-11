@@ -13,7 +13,9 @@
     "build:all": "npm run build && npm run build:server",
     "start": "NODE_ENV=production node dist-server/index.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
-    "test": "./scripts/test-api.sh"
+    "test": "./scripts/test-api.sh",
+    "backup": "./scripts/backup-db.sh",
+    "deploy": "./scripts/deploy.sh"
   },
   "keywords": [
     "phaser",
@@ -24,6 +26,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "@tailwindcss/vite": "^4.2.1",
     "@vitejs/plugin-vue": "^5.2.4",
     "better-sqlite3": "^12.6.2",

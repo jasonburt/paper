@@ -2,18 +2,36 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { initDb } from './db.js';
+import { backupToGCS, restoreFromGCS, listBackups, startHourlyBackup } from './backup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3011;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 
 app.use(cors());
 app.use(express.json());
 
+// Restore from GCS before initializing DB (production only)
+if (process.env.NODE_ENV === 'production' && process.env.BACKUP_BUCKET) {
+  try {
+    await restoreFromGCS();
+    console.log('[startup] DB restore attempted');
+  } catch (err) {
+    console.error('[startup] DB restore failed, starting fresh:', err);
+  }
+}
+
 const db = initDb();
+
+// Start hourly backups (production only)
+if (process.env.NODE_ENV === 'production' && process.env.BACKUP_BUCKET) {
+  startHourlyBackup();
+}
 
 // --- Auth helpers ---
 
@@ -301,6 +319,57 @@ app.post('/api/obstacles', (req, res) => {
   const stmt = db.prepare('INSERT INTO obstacles (crew_id, game, user_id, type, x, y, color) VALUES (?, ?, ?, ?, ?, ?, ?)');
   const result = stmt.run(internalCrewId, game, user_id, type, x, y, color || '#D0D0D0');
   res.json({ id: result.lastInsertRowid });
+});
+
+// --- Admin: DB backup endpoints ---
+
+function requireAdmin(req: express.Request, res: express.Response): boolean {
+  if (!ADMIN_TOKEN) {
+    res.status(503).json({ error: 'Admin token not configured' });
+    return false;
+  }
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ') || auth.slice(7) !== ADMIN_TOKEN) {
+    res.status(401).json({ error: 'Invalid admin token' });
+    return false;
+  }
+  return true;
+}
+
+// Download the raw DB file
+app.get('/api/admin/backup/download', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const dbPath = process.env.NODE_ENV === 'production'
+    ? '/tmp/paper.db'
+    : path.join(__dirname, 'paper.db');
+  if (!fs.existsSync(dbPath)) {
+    res.status(404).json({ error: 'No database file found' });
+    return;
+  }
+  res.download(dbPath, 'paper.db');
+});
+
+// Trigger a backup to GCS
+app.post('/api/admin/backup', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const label = req.body?.label || 'manual';
+    const key = await backupToGCS(label);
+    res.json({ status: 'ok', key });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List recent backups
+app.get('/api/admin/backup/list', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const backups = await listBackups();
+    res.json({ backups });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // SPA catch-all (production only — Vite handles this in dev)

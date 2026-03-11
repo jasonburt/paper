@@ -4,6 +4,7 @@
     <div class="flex-1 min-h-0 w-full mx-auto overflow-y-auto" :class="currentPage !== 'game' ? 'max-w-4xl' : ''">
       <HomePage v-if="currentPage === 'home'" />
       <LoginPage v-else-if="currentPage === 'login'" />
+      <AboutPage v-else-if="currentPage === 'about'" :section="aboutSection" :key="currentPath" />
       <PaperCrewHub v-else-if="currentPage === 'paperCrew'" :key="currentPath" />
       <CreateCrew v-else-if="currentPage === 'createCrew'" />
       <JoinCrew v-else-if="currentPage === 'joinCrew'" />
@@ -29,20 +30,29 @@ import PaperCrewHub from './components/PaperCrewHub.vue';
 import CreateCrew from './components/CreateCrew.vue';
 import JoinCrew from './components/JoinCrew.vue';
 import CrewRoom from './components/CrewRoom.vue';
+import AboutPage from './components/AboutPage.vue';
 
 const currentPath = ref(window.location.pathname);
 
-type Page = 'home' | 'login' | 'paperCrew' | 'createCrew' | 'joinCrew' | 'crewRoom' | 'game';
+type Page = 'home' | 'login' | 'about' | 'paperCrew' | 'createCrew' | 'joinCrew' | 'crewRoom' | 'game';
 
 const currentPage = computed<Page>(() => {
   const p = currentPath.value;
   if (p === '/') return 'home';
   if (p === '/login') return 'login';
+  if (p === '/about' || p.startsWith('/about/')) return 'about';
   if (p === '/paper-crew') return 'paperCrew';
   if (p === '/paper-crew/create') return 'createCrew';
   if (p === '/paper-crew/join') return 'joinCrew';
   if (/^\/paper-crew-room\/[a-f0-9]+$/.test(p)) return 'crewRoom';
   return 'game';
+});
+
+const aboutSection = computed<'main' | 'toss-paper' | 'origami-trail'>(() => {
+  const p = currentPath.value;
+  if (p === '/about/toss-paper') return 'toss-paper';
+  if (p === '/about/origami-trail') return 'origami-trail';
+  return 'main';
 });
 
 const crewRoomMatch = computed(() => currentPath.value.match(/^\/paper-crew-room\/([a-f0-9]+)$/));
