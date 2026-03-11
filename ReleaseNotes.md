@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.5.1 — Database Backup & Persistence (2026-03-11)
+
+### Added
+- **GCS database backups** — SQLite DB is automatically backed up to Google Cloud Storage hourly and on every deploy
+- **Auto-restore on boot** — new instances restore the latest backup from GCS before initializing, so deploys no longer wipe data
+- **Admin backup API** — `POST /api/admin/backup` triggers a backup, `GET /api/admin/backup/download` downloads the raw DB, `GET /api/admin/backup/list` lists recent backups (all protected by admin token)
+- **Pre-deploy backup script** — `npm run backup` saves a local copy and uploads to GCS before deploying
+- **Deploy script** — `npm run deploy` backs up then deploys to Cloud Run in one command
+- **READMEDB.md** — full documentation for the backup system, setup, and commands
+
+### Fixed
+- **Crews disappearing after login** — Cloud Run was routing requests across multiple instances, each with its own empty SQLite DB; fixed by setting max-instances to 1
+- **Single-instance deployment** — min and max instances set to 1 to ensure all requests hit the same SQLite file
+
+---
+
 ## v0.5.0 — Login, Logout & User Settings (2026-03-06)
 
 ### Added

@@ -25,7 +25,8 @@ gcloud run deploy paper \
   --source . \
   --region us-west1 \
   --allow-unauthenticated \
-  --max-instances 3 \
+  --min-instances 1 \
+  --max-instances 1 \
   --set-env-vars "BACKUP_BUCKET=paper-db,ADMIN_TOKEN=${PAPER_ADMIN_TOKEN:-}"
 
 echo ""
