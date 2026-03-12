@@ -14,6 +14,8 @@
     "start": "NODE_ENV=production node dist-server/index.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
     "test": "./scripts/test-api.sh",
+    "test:journeys": "./scripts/test-user-journeys.sh",
+    "test:coverage": "./scripts/test-user-journeys.sh && ./scripts/generate-coverage.sh",
     "backup": "./scripts/backup-db.sh",
     "deploy": "./scripts/deploy.sh"
   },

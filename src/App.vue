@@ -5,6 +5,10 @@
       <HomePage v-if="currentPage === 'home'" />
       <LoginPage v-else-if="currentPage === 'login'" />
       <AboutPage v-else-if="currentPage === 'about'" :section="aboutSection" :key="currentPath" />
+      <LeagueLandingSolo v-else-if="currentPage === 'leagueSolo'" />
+      <LeagueLandingFriends v-else-if="currentPage === 'leagueFriends'" />
+      <LeagueLandingCompany v-else-if="currentPage === 'leagueCompany'" />
+      <DesignsAndAnimations v-else-if="currentPage === 'designs'" />
       <PaperCrewHub v-else-if="currentPage === 'paperCrew'" :key="currentPath" />
       <CreateCrew v-else-if="currentPage === 'createCrew'" />
       <JoinCrew v-else-if="currentPage === 'joinCrew'" />
@@ -31,16 +35,24 @@ import CreateCrew from './components/CreateCrew.vue';
 import JoinCrew from './components/JoinCrew.vue';
 import CrewRoom from './components/CrewRoom.vue';
 import AboutPage from './components/AboutPage.vue';
+import LeagueLandingSolo from './components/LeagueLandingSolo.vue';
+import LeagueLandingFriends from './components/LeagueLandingFriends.vue';
+import LeagueLandingCompany from './components/LeagueLandingCompany.vue';
+import DesignsAndAnimations from './components/DesignsAndAnimations.vue';
 
 const currentPath = ref(window.location.pathname);
 
-type Page = 'home' | 'login' | 'about' | 'paperCrew' | 'createCrew' | 'joinCrew' | 'crewRoom' | 'game';
+type Page = 'home' | 'login' | 'about' | 'leagueSolo' | 'leagueFriends' | 'leagueCompany' | 'designs' | 'paperCrew' | 'createCrew' | 'joinCrew' | 'crewRoom' | 'game';
 
 const currentPage = computed<Page>(() => {
   const p = currentPath.value;
   if (p === '/') return 'home';
   if (p === '/login') return 'login';
   if (p === '/about' || p.startsWith('/about/')) return 'about';
+  if (p === '/league') return 'leagueSolo';
+  if (p === '/league/friends') return 'leagueFriends';
+  if (p === '/league/company') return 'leagueCompany';
+  if (p === '/designs') return 'designs';
   if (p === '/paper-crew') return 'paperCrew';
   if (p === '/paper-crew/create') return 'createCrew';
   if (p === '/paper-crew/join') return 'joinCrew';

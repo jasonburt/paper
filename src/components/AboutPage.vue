@@ -42,6 +42,7 @@ const props = defineProps<{
 const gameLinks = [
   { label: 'About Toss Paper', path: '/about/toss-paper', color: '#FDE801' },
   { label: 'About Origami Trail', path: '/about/origami-trail', color: '#FF4F36' },
+  { label: 'Coming Soon — Paper League', path: '/league', color: '#FF8F01' },
 ];
 
 const markdownSource = computed(() => {
