@@ -48,8 +48,9 @@ export function saveUserLocal(user: PaperUser) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
 }
 
-export async function createUser(username: string, email: string): Promise<PaperUser> {
-  const resp = await api.post<PaperUser & { token: string }>('/users', { username, email });
+export async function createUser(username: string, email: string, password: string, reason: string): Promise<PaperUser | { waitlisted: true; message: string }> {
+  const resp = await api.post<(PaperUser & { token: string }) | { waitlisted: true; message: string }>('/users', { username, email, password, reason });
+  if ('waitlisted' in resp) return resp;
   if (resp.token) saveToken(resp.token);
   const user: PaperUser = { id: resp.id, username: resp.username, email: resp.email, icon: resp.icon, color: resp.color };
   saveUserLocal(user);

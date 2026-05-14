@@ -34,21 +34,7 @@ If you get a JSON response, you're good.
 
 Paper League resets on Thursdays. This is also when you review waitlist requests. Here's the recommended flow:
 
-### 1. Run the AI review (5 minutes before you sit down)
-
-```bash
-npm run waitlist:review
-```
-
-This sends all pending requests to Claude for pre-review. Each request gets:
-- A recommendation: **ACCEPT**, **REJECT**, or **REVIEW** (needs your judgment)
-- A 1-sentence reasoning
-- A confidence level (high/low)
-- A personalized welcome message draft (for accepts)
-
-You don't need to wait for this to finish before starting — it writes results to the DB as it goes.
-
-### 2. Review the waitlist
+### 1. Review the waitlist
 
 ```bash
 npm run waitlist
@@ -70,8 +56,8 @@ This opens an interactive terminal session. For each pending request you'll see:
 ```
 
 **What to press:**
-- `a` — Approve. Creates their account and queues a welcome email with the AI-drafted message.
-- `r` — Reject silently. No email is sent. They can re-apply after 14 days.
+- `a` — Approve. Creates their account with the password they set during signup. They can log in immediately.
+- `r` — Reject silently. No email is sent. They can re-apply with a new reason.
 - `s` — Skip. Come back to this one later.
 - `q` — Quit. Skipped and remaining requests stay pending.
 
@@ -81,15 +67,27 @@ This opens an interactive terminal session. For each pending request you'll see:
 - Don't feel bad about rejecting low-effort requests ("idk looks cool"). They can re-apply with more effort.
 - Aim to clear the queue each Thursday. Don't let it pile up.
 
-### 3. Check the stats
+### 2. Check the stats
 
-At the end of the review session, the script shows:
+At the end of the review session, the script shows active player count, crews, and remaining pending requests.
 
+### 3. Run the weekly highlights snapshot
+
+```bash
+npm run snapshot
 ```
-This session: 8 approved, 3 rejected, 1 skipped
-AI accuracy: 91% (you agreed with 10 of 11 AI recommendations)
-Total active players: 47
-Pending waitlist: 1
+
+This captures the previous week's scores, crowns winners per game per crew, and makes them visible in the "Weekly Winners" tab in each crew room. The leaderboard automatically shows only the current week's scores, so this effectively "resets" the weekly competition.
+
+**What it does:**
+- Snapshots each crew's best scores per game for the previous week
+- Requires at least 2 players in a game to crown a winner
+- Idempotent — safe to run multiple times (won't duplicate data)
+- The server also runs this automatically on Thursdays at ~noon PST as a fallback
+
+**Check the results:**
+```bash
+curl -s "$PAPER_URL/api/crews/<crew-uuid>/highlights" | python3 -m json.tool
 ```
 
 ### 4. Back up the database
@@ -228,6 +226,18 @@ The goal isn't gatekeeping — it's keeping out bots and zero-effort signups. If
 
 ---
 
+## How Login Works (v0.6.0+)
+
+Users now need a password to sign in. The login flow has three paths:
+
+1. **Existing user with password** — enters email, then password. Normal login.
+2. **Grandfathered user (no password)** — users from before v0.6.0 are prompted to set a password on their next login. Once set, they log in normally.
+3. **New user** — enters email, sees the signup form (password, username, reason). Goes to the waitlist. Once approved by you, they can log in with the password they chose during signup.
+
+Passwords are hashed with bcrypt. You never see or handle plaintext passwords.
+
+---
+
 ## Security Notes
 
 - `ADMIN_TOKEN` is the only thing protecting admin endpoints. Keep it secret.
@@ -256,8 +266,8 @@ source ~/.zshrc
 
 | Task | Command |
 |---|---|
-| AI pre-review waitlist | `npm run waitlist:review` |
 | Interactive waitlist review | `npm run waitlist` |
+| Weekly highlights snapshot | `npm run snapshot` |
 | Deploy with backup | `npm run deploy` |
 | Manual backup | `npm run backup` |
 | Health check | `curl -s "$PAPER_URL/api/health"` |
@@ -268,7 +278,7 @@ source ~/.zshrc
 
 ## Thursday Checklist
 
-- [ ] Run `npm run waitlist:review` (AI pre-review)
+- [ ] Run `npm run snapshot` (crown weekly winners, reset leaderboard)
 - [ ] Run `npm run waitlist` (approve/reject requests)
 - [ ] Run `npm run backup` (save the state)
 - [ ] Check player count and stats

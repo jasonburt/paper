@@ -1,9 +1,9 @@
 <template>
   <div class="w-full max-w-2xl mx-auto px-4 py-20 text-center font-serif">
-    <h1 class="text-6xl text-[#1A1A1A] mb-4 tracking-wide">PAPER</h1>
-    <p class="text-xl text-[#6B6B6B] mb-12">serious games for unserious people</p>
-
-    <hr class="w-60 mx-auto border-[#D0D0D0]/60 mb-10" />
+    <div class="px-8 py-14 mb-10">
+      <h1 class="text-7xl text-[#1A1A1A] mb-4 tracking-wide">PAPER</h1>
+      <p class="text-xl text-[#6B6B6B]">serious games for unserious people</p>
+    </div>
 
     <!-- Practice -->
     <p class="text-xs tracking-[0.3em] text-[#B0A898] uppercase mb-5">Practice</p>

@@ -2,8 +2,7 @@ import Phaser from 'phaser';
 import { pushRoute } from '../router';
 import { api } from '../utils/api';
 import { getUser, getPlayerColor, setPlayerColor, PLAYER_COLORS } from '../utils/user';
-import { createDOMInput, removeDOMInput } from '../utils/dom-input';
-import { TOSS_PAPER_OBJECTS, searchObjects, type PlaceableObject } from '../data/placeable-objects';
+import { TOSS_PAPER_OBJECTS, type PlaceableObject } from '../data/placeable-objects';
 import { getResponsiveConfig, type ResponsiveConfig } from '../utils/responsive';
 
 type GameState = 'COLOR_PICK' | 'PRE_THROW' | 'DRAGGING' | 'FLYING' | 'LANDED' | 'PLACE_OBSTACLE' | 'OBJECT_PICKER';
@@ -64,10 +63,9 @@ export class TossPaperScene extends Phaser.Scene {
   // Color picker elements (cleaned up after selection)
   private colorPickElements: Phaser.GameObjects.GameObject[] = [];
 
-  // Object picker elements
-  private pickerElements: Phaser.GameObjects.GameObject[] = [];
-  private searchInput: HTMLInputElement | null = null;
-  private pickerJustClosed = false;
+  // Vue picker event listeners (bound for cleanup)
+  private onObjectSelectedBound: ((e: Event) => void) | null = null;
+  private onPickerSkipBound: ((e: Event) => void) | null = null;
 
   // Responsive
   private rc!: ResponsiveConfig;
@@ -94,8 +92,6 @@ export class TossPaperScene extends Phaser.Scene {
     this.selectedObject = null;
     this.obstacles = [];
     this.colorPickElements = [];
-    this.pickerElements = [];
-    this.searchInput = null;
 
     this.launchOrigin = new Phaser.Math.Vector2(LAUNCH_X, LAUNCH_Y);
     this.dragHandle = new Phaser.Math.Vector2(LAUNCH_X, LAUNCH_Y);
@@ -371,19 +367,125 @@ export class TossPaperScene extends Phaser.Scene {
       g.destroy();
     }
 
-    // Coming soon placeholder (gray silhouette)
-    if (!this.textures.exists('coming_soon')) {
+    // Pencil texture
+    if (!this.textures.exists('pencil')) {
       const g = this.add.graphics();
+      g.fillStyle(0xF7D154, 1);
+      g.fillRect(5, 8, 30, 60);
+      g.fillStyle(0xE06070, 1);
+      g.fillRect(5, 8, 30, 10);
+      g.fillStyle(0xF5E0B0, 1);
+      g.fillTriangle(5, 68, 35, 68, 20, 80);
+      g.fillStyle(0x333333, 1);
+      g.fillTriangle(16, 78, 24, 78, 20, 84);
+      g.generateTexture('pencil', 40, 80);
+      g.destroy();
+    }
+
+    // Eraser texture
+    if (!this.textures.exists('eraser')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xF8B4C8, 1);
+      g.fillRoundedRect(2, 6, 36, 28, 4);
+      g.fillStyle(0x4992FF, 0.6);
+      g.fillRoundedRect(2, 6, 12, 28, 4);
+      g.lineStyle(1, 0xE090A8, 1);
+      g.strokeRoundedRect(2, 6, 36, 28, 4);
+      g.generateTexture('eraser', 40, 40);
+      g.destroy();
+    }
+
+    // Stapler texture
+    if (!this.textures.exists('stapler')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xAAAAAA, 1);
+      g.fillRoundedRect(2, 4, 76, 16, 3);
+      g.fillStyle(0x888888, 1);
+      g.fillRoundedRect(2, 18, 76, 18, 3);
+      g.fillStyle(0x666666, 1);
+      g.fillRect(28, 34, 24, 6);
+      g.generateTexture('stapler', 80, 40);
+      g.destroy();
+    }
+
+    // Paper Clip texture
+    if (!this.textures.exists('paper_clip')) {
+      const g = this.add.graphics();
+      g.lineStyle(3, 0xC0C0C0, 1);
+      g.beginPath();
+      g.moveTo(12, 36);
+      g.lineTo(12, 10);
+      g.arc(20, 10, 8, Math.PI, 0, false);
+      g.lineTo(28, 32);
+      g.arc(20, 32, 8, 0, Math.PI, false);
+      g.lineTo(16, 14);
+      g.stroke();
+      g.generateTexture('paper_clip', 40, 40);
+      g.destroy();
+    }
+
+    // Rubber Band texture
+    if (!this.textures.exists('rubber_band')) {
+      const g = this.add.graphics();
+      g.lineStyle(4, 0xC87030, 1);
+      g.strokeEllipse(20, 20, 30, 24);
+      g.lineStyle(2, 0xE0A050, 1);
+      g.strokeEllipse(20, 20, 30, 24);
+      g.generateTexture('rubber_band', 40, 40);
+      g.destroy();
+    }
+
+    // Glue Stick texture
+    if (!this.textures.exists('glue_stick')) {
+      const g = this.add.graphics();
+      g.fillStyle(0x9060C0, 1);
+      g.fillRoundedRect(8, 20, 24, 56, 4);
       g.fillStyle(0xE0E0E0, 1);
-      g.fillRoundedRect(4, 4, 32, 32, 4);
-      g.lineStyle(1, 0xCCCCCC, 1);
-      g.strokeRoundedRect(4, 4, 32, 32, 4);
-      // Question mark
-      g.fillStyle(0xBBBBBB, 1);
-      g.fillCircle(20, 16, 4);
-      g.fillRect(18, 20, 4, 6);
-      g.fillCircle(20, 30, 2);
-      g.generateTexture('coming_soon', 40, 40);
+      g.fillRoundedRect(10, 2, 20, 22, 10);
+      g.fillStyle(0xF0F0F0, 0.7);
+      g.fillRoundedRect(12, 30, 16, 20, 2);
+      g.generateTexture('glue_stick', 40, 80);
+      g.destroy();
+    }
+
+    // Bookmark texture
+    if (!this.textures.exists('bookmark')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xFF4F36, 1);
+      g.beginPath();
+      g.moveTo(4, 0);
+      g.lineTo(36, 0);
+      g.lineTo(36, 72);
+      g.lineTo(20, 60);
+      g.lineTo(4, 72);
+      g.closePath();
+      g.fill();
+      g.lineStyle(1, 0xFFFFFF, 0.4);
+      g.lineBetween(10, 12, 30, 12);
+      g.lineBetween(10, 20, 26, 20);
+      g.generateTexture('bookmark', 40, 80);
+      g.destroy();
+    }
+
+    // Protractor texture
+    if (!this.textures.exists('protractor')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xF0E8D0, 1);
+      g.beginPath();
+      g.moveTo(4, 38);
+      g.arc(40, 38, 36, Math.PI, 0, false);
+      g.lineTo(76, 38);
+      g.closePath();
+      g.fill();
+      g.lineStyle(1, 0xC8B898, 1);
+      g.beginPath();
+      g.arc(40, 38, 36, Math.PI, 0, false);
+      g.stroke();
+      g.lineStyle(0.8, 0xC8B898, 0.5);
+      g.beginPath();
+      g.arc(40, 38, 20, Math.PI, 0, false);
+      g.stroke();
+      g.generateTexture('protractor', 80, 40);
       g.destroy();
     }
   }
@@ -491,6 +593,17 @@ export class TossPaperScene extends Phaser.Scene {
     // Fix: release drag when pointer leaves the canvas (prevents stuck drag state on mobile)
     this.input.on('pointerupoutside', this.onPointerUp, this);
     this.input.on('gameout', this.onPointerUp, this);
+
+    // Listen for Vue ObjectPicker events
+    this.onObjectSelectedBound = (e: Event) => {
+      const obj = (e as CustomEvent).detail as PlaceableObject;
+      this.selectObject(obj);
+    };
+    this.onPickerSkipBound = () => {
+      this.handlePickerSkip();
+    };
+    window.addEventListener('paper:object-selected', this.onObjectSelectedBound);
+    window.addEventListener('paper:picker-skip', this.onPickerSkipBound);
   }
 
   private scrollField(dx: number) {
@@ -661,188 +774,23 @@ export class TossPaperScene extends Phaser.Scene {
     });
   }
 
-  // --- Object Picker UI ---
+  // --- Object Picker (delegated to Vue component) ---
 
-  private showObjectPicker(filterQuery = '') {
-    // Clear previous picker elements (but preserve search input if re-filtering)
-    const keepSearch = !!this.searchInput;
-    this.pickerElements.forEach(el => el.destroy());
-    this.pickerElements = [];
-    if (!keepSearch) {
-      removeDOMInput(this.searchInput);
-      this.searchInput = null;
-    }
-
-    const { width, height } = this.scale;
-    const { fontSize, isMobile, pickerCols } = this.rc;
-    const panelY = isMobile ? height * 0.2 : height * 0.35;
-    const panelH = height - panelY;
-
-    // Semi-transparent background overlay
-    const overlay = this.add.graphics().setScrollFactor(0).setDepth(300);
-    overlay.fillStyle(0x000000, 0.2);
-    overlay.fillRect(0, 0, width, panelY);
-    this.pickerElements.push(overlay);
-
-    // Panel background
-    const panel = this.add.graphics().setScrollFactor(0).setDepth(300);
-    panel.fillStyle(0xFFFFFF, 1);
-    panel.fillRoundedRect(0, panelY - 12, width, panelH + 12, { tl: 12, tr: 12, bl: 0, br: 0 });
-    panel.lineStyle(1, 0xE0E0E0, 1);
-    panel.lineBetween(0, panelY - 12, width, panelY - 12);
-    this.pickerElements.push(panel);
-
-    // Title
-    const title = this.add.text(width / 2, panelY + 8, 'Place something for the next player', {
-      fontSize: `${fontSize.title}px`,
-      fontFamily: 'Georgia, serif',
-      color: '#6B6B6B',
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(301);
-    this.pickerElements.push(title);
-
-    // Search input (DOM overlay)
-    const searchPad = isMobile ? 40 : 160;
-    const searchW = isMobile ? width - 80 : 480;
-    if (!this.searchInput) {
-      this.searchInput = createDOMInput(searchPad, panelY + 32, searchW, {
-        placeholder: 'Search objects...',
-        maxLength: 30,
-        fontSize: isMobile ? `${14 * this.rc.uiScale}px` : undefined,
-      });
-      this.searchInput.addEventListener('input', () => {
-        this.showObjectPicker(this.searchInput?.value || '');
-      });
-    }
-
-    // Filter objects
-    const allObjects = TOSS_PAPER_OBJECTS;
-    const filtered = searchObjects(allObjects, filterQuery);
-    const available = filtered.filter(o => o.status === 'available');
-    const comingSoon = filtered.filter(o => o.status === 'coming_soon');
-    const sorted = [...available, ...comingSoon];
-
-    // Grid layout — responsive
-    const cols = pickerCols;
-    const cellW = isMobile ? Math.floor(width / cols) : 100;
-    const cellH = isMobile ? 100 : 80;
-    const gridStartX = (width - cols * cellW) / 2;
-    const gridStartY = panelY + (isMobile ? 90 : 80);
-    const thumbSize = isMobile ? 52 : 40;
-
-    if (sorted.length === 0) {
-      const empty = this.add.text(width / 2, gridStartY + 40, 'No objects found', {
-        fontSize: `${fontSize.title}px`,
-        fontFamily: 'Georgia, serif',
-        color: '#AAAAAA',
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-      this.pickerElements.push(empty);
-    }
-
-    sorted.forEach((obj, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const cx = gridStartX + col * cellW + cellW / 2;
-      const cy = gridStartY + row * cellH;
-
-      if (cy + cellH > height - 30) return; // off-screen, leave room for skip
-
-      const isComingSoon = obj.status === 'coming_soon';
-      const spriteKey = isComingSoon ? 'coming_soon' : obj.spriteKey;
-
-      // Thumbnail sprite
-      if (this.textures.exists(spriteKey)) {
-        const thumb = this.add.image(cx, cy + 14, spriteKey)
-          .setScrollFactor(0).setDepth(302);
-        const tex = this.textures.get(spriteKey).getSourceImage();
-        const scale = Math.min(thumbSize / tex.width, thumbSize / tex.height);
-        thumb.setScale(scale);
-        if (isComingSoon) thumb.setAlpha(0.4);
-        this.pickerElements.push(thumb);
-      }
-
-      // Name label
-      const nameFontSize = isMobile ? fontSize.bodySmall : 11;
-      const label = this.add.text(cx, cy + thumbSize - 2, obj.name, {
-        fontSize: `${nameFontSize}px`,
-        fontFamily: 'Georgia, serif',
-        color: isComingSoon ? '#BBBBBB' : '#1A1A1A',
-      }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(302);
-      this.pickerElements.push(label);
-
-      // "Coming Soon" sub-label
-      if (isComingSoon) {
-        const soonFontSize = isMobile ? 11 : 9;
-        const soon = this.add.text(cx, cy + thumbSize + nameFontSize + 2, 'Coming Soon', {
-          fontSize: `${soonFontSize}px`,
-          fontFamily: 'Georgia, serif',
-          color: '#CCCCCC',
-          fontStyle: 'italic',
-        }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(302);
-        this.pickerElements.push(soon);
-      }
-
-      // Hit zone
-      const hitZone = this.add.zone(cx, cy + cellH / 2, cellW - 4, cellH - 4)
-        .setScrollFactor(0).setDepth(303).setInteractive({ useHandCursor: !isComingSoon });
-
-      if (isComingSoon) {
-        hitZone.on('pointerdown', () => {
-          this.showToast('Coming soon!');
-        });
-      } else {
-        // Hover highlight
-        const highlight = this.add.graphics().setScrollFactor(0).setDepth(301).setAlpha(0);
-        highlight.fillStyle(0x4992FF, 0.1);
-        highlight.fillRoundedRect(cx - cellW / 2 + 4, cy - 4, cellW - 8, cellH - 4, 6);
-        this.pickerElements.push(highlight);
-
-        hitZone.on('pointerover', () => highlight.setAlpha(1));
-        hitZone.on('pointerout', () => highlight.setAlpha(0));
-        hitZone.on('pointerdown', () => {
-          this.selectObject(obj);
-        });
-      }
-      this.pickerElements.push(hitZone);
-    });
-
-    // Skip button
-    const skipFontSize = isMobile ? fontSize.button : 14;
-    const skipBtn = this.add.text(width / 2, height - 20, 'Skip', {
-      fontSize: `${skipFontSize}px`,
-      fontFamily: 'Georgia, serif',
-      color: '#AAAAAA',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(302)
-      .setInteractive({ useHandCursor: true });
-    skipBtn.on('pointerover', () => skipBtn.setColor('#FF8F01'));
-    skipBtn.on('pointerout', () => skipBtn.setColor('#AAAAAA'));
-    skipBtn.on('pointerdown', () => {
-      this.clearObjectPicker();
-      if (this.mode === 'multi' && this.crewId) {
-        this.stateHintText.setText('Skipped! Returning...');
-        this.time.delayedCall(800, () => {
-          pushRoute(`/paper-crew-room/${this.crewId}`);
-          this.scene.stop();
-        });
-      } else {
-        this.enterPreThrow();
-      }
-    });
-    this.pickerElements.push(skipBtn);
+  private showObjectPicker() {
+    // Tell Vue to show the picker with the right objects
+    window.dispatchEvent(new CustomEvent('paper:set-picker-objects', { detail: TOSS_PAPER_OBJECTS }));
+    window.dispatchEvent(new Event('paper:show-picker'));
   }
 
-  private clearObjectPicker() {
-    this.pickerElements.forEach(el => el.destroy());
-    this.pickerElements = [];
-    removeDOMInput(this.searchInput);
-    this.searchInput = null;
+  private hideObjectPicker() {
+    window.dispatchEvent(new Event('paper:hide-picker'));
   }
 
   private selectObject(obj: PlaceableObject) {
     this.selectedObject = obj;
-    this.clearObjectPicker();
+    this.hideObjectPicker();
 
     this.gameState = 'PLACE_OBSTACLE';
-    this.pickerJustClosed = true;
 
     // Create ghost obstacle
     this.ghostObstacle = this.add.graphics();
@@ -850,10 +798,23 @@ export class TossPaperScene extends Phaser.Scene {
     this.ghostObstacle.setAlpha(0.5);
     this.ghostObstacle.setDepth(50);
 
-    this.stateHintText.setText(`Click to place: ${obj.name}`);
+    this.stateHintText.setText(`Scroll to position, click to place: ${obj.name}`);
     this.scrollLeftBtn.setVisible(true);
     this.scrollRightBtn.setVisible(true);
     this.distanceText.setVisible(false);
+  }
+
+  private handlePickerSkip() {
+    this.hideObjectPicker();
+    if (this.mode === 'multi' && this.crewId) {
+      this.stateHintText.setText('Skipped! Returning...');
+      this.time.delayedCall(800, () => {
+        pushRoute(`/paper-crew-room/${this.crewId}`);
+        this.scene.stop();
+      });
+    } else {
+      this.enterPreThrow();
+    }
   }
 
   private showToast(message: string) {
@@ -956,10 +917,10 @@ export class TossPaperScene extends Phaser.Scene {
         this.stateHintText.setText('Pull back and release!');
       }
     } else if (this.gameState === 'PLACE_OBSTACLE') {
-      if (this.pickerJustClosed) {
-        this.pickerJustClosed = false;
-        return;
-      }
+      // Don't place if the click hit an interactive UI element (scroll buttons)
+      const hitObjects = this.input.hitTestPointer(pointer);
+      if (hitObjects.length > 0) return;
+
       const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
       this.confirmObstaclePlacement(worldPoint.x, worldPoint.y);
     }
@@ -1118,7 +1079,8 @@ export class TossPaperScene extends Phaser.Scene {
       return;
     }
 
-    if (type === 'wall' || type === 'sticky_note' || type === 'tape_roll') {
+    if (type === 'wall' || type === 'sticky_note' || type === 'tape_roll' ||
+        type === 'pencil' || type === 'stapler' || type === 'bookmark') {
       // Blockers — stop the plane
       this.triggerLanded();
     } else if (type === 'ball' || type === 'paper_cup') {
@@ -1129,14 +1091,62 @@ export class TossPaperScene extends Phaser.Scene {
       // Wind gust
       body.velocity.x += Phaser.Math.Between(-120, 120);
       body.velocity.y += Phaser.Math.Between(-60, 60);
+    } else if (type === 'eraser') {
+      // Eraser — remove the nearest other obstacle
+      let nearest: Phaser.GameObjects.GameObject | null = null;
+      let nearestDist = Infinity;
+      for (const obs of this.obstacles) {
+        if (obs === obstacle) continue;
+        const ox = (obs as any).x;
+        const oy = (obs as any).y;
+        const d = Phaser.Math.Distance.Between(obstacle.x, obstacle.y, ox, oy);
+        if (d < nearestDist) { nearestDist = d; nearest = obs; }
+      }
+      if (nearest && nearestDist < 200) {
+        this.obstacles = this.obstacles.filter(o => o !== nearest);
+        nearest.destroy();
+      }
+      // Also remove the eraser itself
+      this.obstacles = this.obstacles.filter(o => o !== obstacle);
+      obstacle.destroy();
+    } else if (type === 'paper_clip') {
+      // Redirect — curve the plane's trajectory
+      const speed = body.speed;
+      const newAngle = Math.atan2(body.velocity.y, body.velocity.x) + Phaser.Math.Between(-40, 40) * Math.PI / 180;
+      body.velocity.x = Math.cos(newAngle) * speed;
+      body.velocity.y = Math.sin(newAngle) * speed * 0.8;
+    } else if (type === 'rubber_band') {
+      // Slingshot — boost speed in a new direction
+      const angle = Math.atan2(body.velocity.y, body.velocity.x);
+      body.velocity.x = Math.cos(angle) * 600;
+      body.velocity.y = Phaser.Math.Between(-200, -50);
+    } else if (type === 'glue_stick') {
+      // Slow zone — reduce speed dramatically
+      body.velocity.x *= 0.3;
+      body.velocity.y *= 0.3;
+    } else if (type === 'protractor') {
+      // Ramp — deflect upward
+      body.velocity.y = -Math.abs(body.velocity.y) - 100;
+      body.velocity.x *= 0.8;
     } else if (effect === 'blocker') {
-      // Fallback for any future blocker
       this.triggerLanded();
     } else if (effect === 'environmental') {
-      // Fallback for any future environmental
       body.velocity.x += Phaser.Math.Between(-80, 80);
       body.velocity.y += Phaser.Math.Between(-40, 40);
     }
+  }
+
+  // --- Lifecycle ---
+
+  shutdown() {
+    // Clean up Vue event listeners
+    if (this.onObjectSelectedBound) {
+      window.removeEventListener('paper:object-selected', this.onObjectSelectedBound);
+    }
+    if (this.onPickerSkipBound) {
+      window.removeEventListener('paper:picker-skip', this.onPickerSkipBound);
+    }
+    this.hideObjectPicker();
   }
 
   // --- Helpers ---

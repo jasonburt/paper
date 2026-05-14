@@ -27,7 +27,8 @@ gcloud run deploy paper \
   --allow-unauthenticated \
   --min-instances 1 \
   --max-instances 1 \
-  --set-env-vars "BACKUP_BUCKET=paper-db,ADMIN_TOKEN=${PAPER_ADMIN_TOKEN:-}"
+  --update-env-vars "BACKUP_BUCKET=paper-db,ADMIN_TOKEN=${PAPER_ADMIN_TOKEN:-}" \
+  --cpu-boost
 
 echo ""
 echo "==> Deploy complete! The new instance will auto-restore from the latest GCS backup."

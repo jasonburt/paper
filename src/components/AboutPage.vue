@@ -12,16 +12,16 @@
 
     <!-- Sub-page links on main about page -->
     <div v-if="section === 'main'" class="mt-12 pt-8 border-t border-[#D0D0D0]/60">
-      <div class="space-y-4">
+      <div class="space-y-3">
         <a
           v-for="game in gameLinks"
           :key="game.path"
           href="#"
-          class="flex items-center gap-3 text-lg text-[#1A1A1A] hover:text-[#FF8F01] transition-colors"
+          class="group flex items-center gap-3 px-4 py-3 rounded-md border border-transparent hover:border-[#D0D0D0]/60 hover:bg-[#FAFAFA] transition-all"
           @click.prevent="navigate(game.path)"
         >
-          <span class="w-2.5 h-2.5 rounded-full inline-block" :style="{ backgroundColor: game.color }"></span>
-          {{ game.label }}
+          <span class="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0" :style="{ backgroundColor: game.color }"></span>
+          <span class="text-lg text-[#4992FF] group-hover:text-[#FF8F01] transition-colors">[ {{ game.label }} ]</span>
         </a>
       </div>
     </div>
@@ -109,7 +109,7 @@ function renderMarkdown(md: string): string {
 
 function inline(text: string): string {
   // Links: [text](url) — only internal navigation links are rendered as clickable
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#4992FF] hover:text-[#FF8F01] transition-colors underline">$1</a>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#4992FF] hover:text-[#FF8F01] transition-colors underline decoration-[#4992FF]/30 underline-offset-2 hover:decoration-[#FF8F01]/50">$1</a>');
   // Bold
   text = text.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-[#1A1A1A] font-semibold">$1</strong>');
   // Italic

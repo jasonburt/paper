@@ -1,5 +1,74 @@
 # Release Notes
 
+## v0.8.0 — Weekly Highlights (2026-03-19)
+
+### Added
+- **Weekly Highlights system** — scores are snapshotted every Thursday, crowning winners per game per crew
+- **Highlights tab in Crew Room** — `[ Leaderboard | Weekly Winners ]` tab navigation
+- **Winner cards** — shows weekly champion with star icon, avatar in their color, runner-up, and expandable full leaderboard
+- **Stats summary** — "Most Wins" and "Top Score" stats bar above the week history
+- **Streak badges** — 🔥 icon when a player wins the same game 2+ consecutive weeks
+- **Weekly score filter** — leaderboard now shows "This Week" by default with "Show All Time" toggle
+- **`GET /api/crews/:uuid/highlights`** — weekly highlight history endpoint with streak detection
+- **`GET /api/crews/:uuid/highlights/stats`** — stats summary (most wins, top score)
+- **`POST /api/admin/highlights/snapshot`** — manual snapshot trigger for testing/backfill
+- **`?week=current` filter** on `GET /api/scores/:game` — filters scores to current week
+- **Snapshot script** — `npm run snapshot` (`scripts/weekly-snapshot.sh`) triggers the weekly snapshot against production
+- **Automatic Thursday cron** — server-side fallback snapshots at ~noon PST every Thursday in production
+- **Smoke tests expanded** — 50 tests (up from 42), covering snapshot, highlights, stats, weekly filter
+
+### Changed
+- Crew Room leaderboard now defaults to current week's scores (was all-time)
+- Object Picker extracted to reusable Vue component (from previous session)
+- Fixed scroll vs place bug in Toss Paper (from previous session)
+
+---
+
+## v0.7.0 — Invite Codes (2026-03-19)
+
+### Added
+- **User invite codes** — approved users get 2 invite codes they can share with friends to skip the waitlist
+- **Invite code signup** — new users with a valid invite code go directly to an active account (no waitlist)
+- **Invite chain** — invited users also receive 2 invite codes, enabling organic growth
+- **Invite code validation** — `GET /api/invites/check?code=` public endpoint to verify codes before signup
+- **My invites endpoint** — `GET /api/invites` (authenticated) returns a user's codes with usage status
+- **Invite UI in crew hub** — users see their invite codes with copy buttons and usage status
+- **Login page invite field** — signup form accepts an optional invite code with live validation
+- **Smoke tests expanded** — 42 tests (up from 23), covering full invite code lifecycle
+
+### Changed
+- Admin approval now auto-generates 2 invite codes for newly approved users
+- Signup with invite code returns user data + token directly (no waitlist step)
+
+---
+
+## v0.6.1 — Deploy Fix (2026-03-14)
+
+### Fixed
+- **Deploy script** — changed `--set-env-vars` to `--update-env-vars` so deploys don't wipe existing Cloud Run env vars
+- **Startup timeout** — added `--cpu-boost` flag to avoid health check timeouts during cold starts (container was starting successfully but too slowly for the default probe)
+- **Admin token** — `ADMIN_TOKEN` now properly set on Cloud Run, enabling admin/waitlist/backup endpoints in production
+
+---
+
+## v0.6.0 — Password Auth & Waitlist (2026-03-12)
+
+### Added
+- **Password authentication** — all users now need a password to sign in; existing users are prompted to set one on next login
+- **Waitlist system** — new signups go to a waitlist with a reason field; requests are reviewed on Thursdays
+- **Admin waitlist management** — `GET /api/admin/waitlist`, `POST /api/admin/waitlist/:id/approve`, `POST /api/admin/waitlist/:id/reject`, `GET /api/admin/stats` (all admin-token protected)
+- **Auth check endpoint** — `POST /api/auth/check` determines login state (existing user, grandfathered, waitlisted, or new)
+- **Interactive review script** — `npm run waitlist` opens a terminal UI to approve/reject pending requests
+- **Waitlist confirmation page** — `/waitlist-confirmed` shows pending status after signup
+- **Smoke tests expanded** — 31 tests covering auth check, waitlist signup, admin approval, password enforcement, and admin stats
+
+### Changed
+- Login page redesigned with three-step flow: email → password → signup (if new)
+- `authenticateRequest()` now checks user status — non-active users are blocked from protected endpoints
+- Signup requires a reason ("Why do you want to join Paper?") — minimum effort filter
+
+---
+
 ## v0.5.1 — Database Backup & Persistence (2026-03-11)
 
 ### Added

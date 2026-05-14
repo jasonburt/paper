@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#FFFFFF"/>
+  <!-- Paper airplane flying up-right -->
+  <g transform="translate(240,280) rotate(-35)">
+    <!-- Top wing -->
+    <polygon points="-160,0 160,-70 10,0" fill="#1A1A1A"/>
+    <!-- Bottom wing -->
+    <polygon points="-160,0 160,-70 160,5" fill="#333333"/>
+    <!-- Fuselage highlight -->
+    <polygon points="-160,0 160,-70 160,-30 -90,0" fill="#1A1A1A" opacity="0.95"/>
+    <!-- Red accent stripe -->
+    <polygon points="-50,-1 70,-18 70,-8 -25,2" fill="#FF4F36" opacity="0.8"/>
+  </g>
+</svg>

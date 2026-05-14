@@ -7,3 +7,4 @@ test-coverage.html
 scripts/test-results.json
 .env*
 .DS_Store
+*.webm

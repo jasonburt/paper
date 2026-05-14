@@ -148,6 +148,34 @@
         </div>
       </div>
 
+      <!-- Invite codes -->
+      <div v-if="inviteCodes.length > 0" class="mt-8 mb-2">
+        <p class="text-lg text-[#6B6B6B] mb-3">Invite Friends:</p>
+        <div class="space-y-2">
+          <div
+            v-for="invite in inviteCodes"
+            :key="invite.code"
+            class="flex items-center gap-3 px-4 py-2 rounded-md bg-[#F9F9F9] border border-[#D0D0D0]/60"
+          >
+            <span
+              class="font-mono text-base tracking-widest"
+              :class="invite.used_by ? 'text-[#B0A898] line-through' : 'text-[#1A1A1A]'"
+            >{{ invite.code }}</span>
+            <span v-if="invite.used_by" class="text-xs text-[#6B6B6B]">
+              Used by {{ invite.used_by_username }}
+            </span>
+            <button
+              v-else
+              class="text-xs text-[#4992FF] hover:text-[#FF8F01] transition-colors ml-auto"
+              @click="copyInviteCode(invite.code)"
+            >
+              {{ copiedCode === invite.code ? 'Copied!' : '[ Copy ]' }}
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-[#B0A898] mt-2">Share a code with a friend to let them skip the waitlist.</p>
+      </div>
+
       <!-- Buttons -->
       <div class="flex justify-center gap-8 mt-8 mb-6">
         <button
@@ -209,6 +237,10 @@ const playerColor = ref(getPlayerColor());
 const crews = ref<any[]>([]);
 const loadingCrews = ref(true);
 
+// Invite codes
+const inviteCodes = ref<any[]>([]);
+const copiedCode = ref('');
+
 onMounted(async () => {
   const user = getUser();
   if (!user) {
@@ -241,7 +273,7 @@ onMounted(async () => {
   }
 
   step.value = 'hub';
-  await loadCrews(validUser.id);
+  await Promise.all([loadCrews(validUser.id), loadInviteCodes()]);
 });
 
 function handleLogout() {
@@ -264,7 +296,7 @@ async function saveProfile() {
     playerIcon.value = getPlayerIcon();
     playerColor.value = getPlayerColor();
     step.value = 'hub';
-    await loadCrews(currentUser.value!.id);
+    await Promise.all([loadCrews(currentUser.value!.id), loadInviteCodes()]);
   } catch (e: any) {
     if (e.message?.includes('already taken')) {
       usernameError.value = 'Username already taken';
@@ -282,7 +314,7 @@ async function skipProfile() {
   playerIcon.value = getPlayerIcon();
   playerColor.value = getPlayerColor();
   step.value = 'hub';
-  await loadCrews(currentUser.value!.id);
+  await Promise.all([loadCrews(currentUser.value!.id), loadInviteCodes()]);
 }
 
 function editProfile() {
@@ -303,6 +335,20 @@ async function loadCrews(userId: number) {
   } finally {
     loadingCrews.value = false;
   }
+}
+
+async function loadInviteCodes() {
+  try {
+    inviteCodes.value = await api.get<any[]>('/invites');
+  } catch {
+    inviteCodes.value = [];
+  }
+}
+
+function copyInviteCode(code: string) {
+  navigator.clipboard.writeText(code);
+  copiedCode.value = code;
+  setTimeout(() => { copiedCode.value = ''; }, 2000);
 }
 
 function goToCrewRoom(crewId: string) {

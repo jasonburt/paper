@@ -4,6 +4,7 @@
     <div class="flex-1 min-h-0 w-full mx-auto overflow-y-auto" :class="currentPage !== 'game' ? 'max-w-4xl' : ''">
       <HomePage v-if="currentPage === 'home'" />
       <LoginPage v-else-if="currentPage === 'login'" />
+      <WaitlistConfirmation v-else-if="currentPage === 'waitlistConfirmed'" />
       <AboutPage v-else-if="currentPage === 'about'" :section="aboutSection" :key="currentPath" />
       <LeagueLandingSolo v-else-if="currentPage === 'leagueSolo'" />
       <LeagueLandingFriends v-else-if="currentPage === 'leagueFriends'" />
@@ -30,6 +31,7 @@ import HeaderNav from './components/HeaderNav.vue';
 import GameCanvas from './components/GameCanvas.vue';
 import HomePage from './components/HomePage.vue';
 import LoginPage from './components/LoginPage.vue';
+import WaitlistConfirmation from './components/WaitlistConfirmation.vue';
 import PaperCrewHub from './components/PaperCrewHub.vue';
 import CreateCrew from './components/CreateCrew.vue';
 import JoinCrew from './components/JoinCrew.vue';
@@ -42,12 +44,13 @@ import DesignsAndAnimations from './components/DesignsAndAnimations.vue';
 
 const currentPath = ref(window.location.pathname);
 
-type Page = 'home' | 'login' | 'about' | 'leagueSolo' | 'leagueFriends' | 'leagueCompany' | 'designs' | 'paperCrew' | 'createCrew' | 'joinCrew' | 'crewRoom' | 'game';
+type Page = 'home' | 'login' | 'waitlistConfirmed' | 'about' | 'leagueSolo' | 'leagueFriends' | 'leagueCompany' | 'designs' | 'paperCrew' | 'createCrew' | 'joinCrew' | 'crewRoom' | 'game';
 
 const currentPage = computed<Page>(() => {
   const p = currentPath.value;
   if (p === '/') return 'home';
   if (p === '/login') return 'login';
+  if (p === '/waitlist-confirmed') return 'waitlistConfirmed';
   if (p === '/about' || p.startsWith('/about/')) return 'about';
   if (p === '/league') return 'leagueSolo';
   if (p === '/league/friends') return 'leagueFriends';
